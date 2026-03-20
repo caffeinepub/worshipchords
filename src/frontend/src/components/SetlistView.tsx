@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ListMusic, Music2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListMusic, Music2 } from "lucide-react";
 import type { ActiveSession } from "../backend.d";
 import { useListSetlists, useListSongs } from "../hooks/useQueries";
 
@@ -32,9 +32,35 @@ export default function SetlistView({
         .filter(Boolean)
     : [];
 
+  const currentIndex = session?.activeSongId
+    ? setlistSongs.findIndex((s) => s?.id === session.activeSongId)
+    : -1;
+
+  const hasPrev = currentIndex > 0;
+  const hasNext =
+    currentIndex < setlistSongs.length - 1 && setlistSongs.length > 0;
+
   const handleSongClick = (songId: string) => {
     onSessionUpdate({ activeSongId: songId });
     onNavigateToView();
+  };
+
+  const handlePrev = () => {
+    if (!hasPrev) return;
+    const prevSong = setlistSongs[currentIndex - 1];
+    if (prevSong) {
+      onSessionUpdate({ activeSongId: prevSong.id });
+      onNavigateToView();
+    }
+  };
+
+  const handleNext = () => {
+    if (!hasNext) return;
+    const nextSong = setlistSongs[currentIndex + 1];
+    if (nextSong) {
+      onSessionUpdate({ activeSongId: nextSong.id });
+      onNavigateToView();
+    }
   };
 
   return (
@@ -55,6 +81,47 @@ export default function SetlistView({
             </p>
           )}
         </div>
+
+        {/* Prev / Next navigation */}
+        {setlistSongs.length > 0 && (
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handlePrev}
+              disabled={!hasPrev}
+              data-ocid="setlist_view.pagination_prev"
+              title="Previous song"
+              className={cn(
+                "w-7 h-7 rounded flex items-center justify-center transition-colors",
+                hasPrev
+                  ? "text-chord hover:bg-chord/10 active:bg-chord/20"
+                  : "text-muted-foreground/30 cursor-not-allowed",
+              )}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-[10px] text-muted-foreground font-mono min-w-[32px] text-center">
+              {currentIndex >= 0
+                ? `${currentIndex + 1}/${setlistSongs.length}`
+                : `0/${setlistSongs.length}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!hasNext}
+              data-ocid="setlist_view.pagination_next"
+              title="Next song"
+              className={cn(
+                "w-7 h-7 rounded flex items-center justify-center transition-colors",
+                hasNext
+                  ? "text-chord hover:bg-chord/10 active:bg-chord/20"
+                  : "text-muted-foreground/30 cursor-not-allowed",
+              )}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}

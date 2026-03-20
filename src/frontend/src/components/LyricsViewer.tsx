@@ -1,9 +1,21 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Mic2 } from "lucide-react";
+import { Mic2 } from "lucide-react";
+import type { ReactElement } from "react";
 import type { ActiveSession } from "../backend.d";
 import { useGetSong } from "../hooks/useQueries";
 import { stripChordsToLyrics } from "../utils/lyrics";
+
+const LOADING_SKELETONS = [
+  "72%",
+  "88%",
+  "64%",
+  "90%",
+  "78%",
+  "55%",
+  "82%",
+  "60%",
+];
 
 interface LyricsViewerProps {
   session: ActiveSession | null | undefined;
@@ -18,40 +30,52 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
 
   const renderLyrics = () => {
     if (!lyricsText) return null;
-    return lyricsText.split("\n").map((line, i) => {
+    const lines = lyricsText.split("\n");
+    const elements: ReactElement[] = [];
+    let key = 0;
+
+    for (const line of lines) {
       const trimmed = line.trim();
-      const key = `lyrics-line-${i}`;
+      const lineKey = `lyrics-line-${key++}`;
 
       if (!trimmed) {
-        return <div key={key} className="h-5" />;
+        elements.push(<div key={lineKey} className="h-4" />);
+        continue;
       }
 
       if (/^\[.+\]$/.test(trimmed)) {
-        return (
+        elements.push(
           <div
-            key={key}
-            className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-6 mb-2 first:mt-0"
+            key={lineKey}
+            className="flex items-center gap-2 mt-8 mb-3 first:mt-0"
           >
-            {trimmed.replace(/[\[\]]/g, "")}
-          </div>
+            <div className="h-px flex-1 bg-border/60" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-chord/70 px-1">
+              {trimmed.replace(/[\[\]]/g, "")}
+            </span>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>,
         );
+        continue;
       }
 
-      return (
-        <div
-          key={key}
-          className="text-xl leading-relaxed text-foreground font-medium"
+      elements.push(
+        <p
+          key={lineKey}
+          className="text-xl leading-[1.8] text-foreground font-normal tracking-wide"
         >
           {line}
-        </div>
+        </p>,
       );
-    });
+    }
+
+    return elements;
   };
 
   return (
     <div className="flex flex-col h-full" data-ocid="lyrics.panel">
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-border shrink-0">
+      <div className="px-6 pt-5 pb-4 border-b border-border shrink-0 bg-background">
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-8 w-48 bg-secondary" />
@@ -59,31 +83,28 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
           </div>
         ) : song ? (
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="w-5 h-5 text-leader" />
-              <h1 className="text-2xl font-bold text-foreground leading-tight">
-                {song.title}
-              </h1>
-            </div>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-leader/10 border border-leader/20 text-leader font-semibold">
+            <h1 className="text-2xl font-bold text-foreground leading-tight tracking-tight">
+              {song.title}
+            </h1>
+            <div className="flex items-center gap-3 mt-2.5">
+              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-chord/10 border border-chord/20 text-chord font-semibold">
                 Key of {song.key}
               </span>
               <span className="text-xs text-muted-foreground">
                 {Number(song.bpm)} BPM
               </span>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Mic2 className="w-3 h-3" /> Vocals only
+                <Mic2 className="w-3 h-3" /> Vocals
               </span>
             </div>
           </div>
         ) : (
           <div>
             <h1 className="text-lg font-semibold text-muted-foreground">
-              Lyrics View
+              Lyrics
             </h1>
             <p className="text-xs text-muted-foreground/60 mt-0.5">
-              Chords only shown to musicians
+              Select a song to see lyrics
             </p>
           </div>
         )}
@@ -92,8 +113,8 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
       {/* Lyrics Content */}
       <ScrollArea className="flex-1">
         {isLoading ? (
-          <div className="p-8 space-y-4" data-ocid="lyrics.loading_state">
-            {["70%", "85%", "60%", "90%", "75%", "50%"].map((w) => (
+          <div className="p-10 space-y-5" data-ocid="lyrics.loading_state">
+            {LOADING_SKELETONS.map((w) => (
               <Skeleton
                 key={w}
                 className="h-6 bg-secondary"
@@ -103,17 +124,18 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
           </div>
         ) : song && lyricsText ? (
           <div
-            className="px-8 py-8 max-w-2xl mx-auto"
+            className="px-8 py-10 max-w-2xl mx-auto"
             data-ocid="lyrics.section"
           >
             {renderLyrics()}
+            <div className="h-16" />
           </div>
         ) : (
           <div
             className="flex flex-col items-center justify-center h-full min-h-[300px] text-center px-6"
             data-ocid="lyrics.empty_state"
           >
-            <BookOpen className="w-14 h-14 text-muted-foreground/20 mb-4" />
+            <Mic2 className="w-14 h-14 text-muted-foreground/20 mb-4" />
             <p className="text-muted-foreground font-medium">
               Waiting for worship leader to select a song
             </p>

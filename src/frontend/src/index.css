@@ -114,30 +114,72 @@
   .bg-selection {
     background-color: oklch(var(--selection));
   }
+
+  /* ── Chord Sheet Layout ── */
+
+  /* Container row for a chord line — keeps tokens inline and pre-spaced */
   .chord-line {
-    color: oklch(var(--chord));
     font-family: "JetBrains Mono", monospace;
-    font-size: 0.875rem;
-    line-height: 1.4;
-    white-space: pre;
+    font-size: 0.9rem;
+    line-height: 2.2; /* tall enough to show the pill without crowding */
+    white-space: pre; /* preserves spacing between tokens */
+    display: block;
   }
+
+  /* Individual chord token — bold, highlighted pill */
+  .chord-token {
+    display: inline-block;
+    color: oklch(0.92 0.16 200); /* bright cyan-blue, clearly distinct */
+    background-color: oklch(0.76 0.1 203 / 0.18); /* subtle tinted background */
+    border: 1px solid oklch(0.76 0.1 203 / 0.35);
+    font-weight: 800;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    padding: 0 3px;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+    vertical-align: baseline;
+    /* Slight glow for emphasis */
+    text-shadow: 0 0 12px oklch(0.76 0.1 203 / 0.6);
+  }
+
+  .chord-sheet-gap {
+    height: 0.75rem;
+  }
+
   .lyric-line {
     color: oklch(var(--foreground));
     font-family: "JetBrains Mono", monospace;
-    font-size: 0.9rem;
-    line-height: 1.6;
+    font-size: 0.95rem;
+    line-height: 1.65;
     white-space: pre;
+    opacity: 0.9;
   }
+
+  /* Section header: [Verse 1], [Chorus], etc. */
   .section-label {
-    color: oklch(var(--muted-foreground));
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
     font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.12em;
+    color: oklch(var(--chord) / 0.7);
+    background-color: oklch(var(--chord) / 0.08);
+    border: 1px solid oklch(var(--chord) / 0.2);
+    border-radius: 4px;
+    padding: 1px 7px;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
   }
+
+  .section-label-bracket {
+    opacity: 0.4;
+    font-size: 0.65rem;
+  }
+
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }

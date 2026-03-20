@@ -67,6 +67,33 @@ interface ChordViewerProps {
   mobile?: boolean;
 }
 
+/**
+ * Render a chord line by wrapping each chord token in a highlighted span.
+ * Spaces are preserved as-is so alignment above lyrics is maintained.
+ */
+function renderChordLine(line: string): React.ReactNode {
+  // Split into chord tokens and whitespace runs, use part+position as key
+  const parts = line.split(/(\s+)/);
+  return parts.map((part, idx) => {
+    if (!part) return null;
+    const k = `${idx}-${part.length}`;
+    if (/^\s+$/.test(part)) {
+      return (
+        // biome-ignore lint/suspicious/noArrayIndexKey: positional tokens
+        <span key={k} style={{ whiteSpace: "pre" }}>
+          {part}
+        </span>
+      );
+    }
+    return (
+      // biome-ignore lint/suspicious/noArrayIndexKey: positional tokens
+      <span key={k} className="chord-token">
+        {part}
+      </span>
+    );
+  });
+}
+
 export default function ChordViewer({
   session,
   isAdmin,
@@ -195,17 +222,20 @@ export default function ChordViewer({
     return displaySheet.split("\n").map((line, i) => {
       const type = getLineType(line);
       const key = `${type}-${i}`;
-      if (type === "empty") return <div key={key} className="h-3" />;
+      if (type === "empty")
+        return <div key={key} className="chord-sheet-gap" />;
       if (type === "section")
         return (
           <div key={key} className="section-label">
-            {line}
+            <span className="section-label-bracket">[</span>
+            {line.replace(/^\[|\]$/g, "")}
+            <span className="section-label-bracket">]</span>
           </div>
         );
       if (type === "chord")
         return (
           <div key={key} className="chord-line">
-            {line}
+            {renderChordLine(line)}
           </div>
         );
       return (

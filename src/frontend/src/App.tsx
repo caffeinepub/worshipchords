@@ -17,7 +17,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  BookOpen,
   Crown,
   Eye,
   ListMusic,
@@ -65,7 +64,7 @@ const queryClient = new QueryClient({
   },
 });
 
-type Tab = "library" | "setlist" | "view" | "lyrics" | "chat";
+type Tab = "library" | "setlist" | "view" | "chat";
 
 const FOLLOWING_LEADER_KEY = "worshipchords_following_leader";
 
@@ -323,9 +322,11 @@ function AppContent() {
     { id: "library" as Tab, icon: Music2, label: "Library" },
     { id: "setlist" as Tab, icon: ListMusic, label: "Sets" },
     { id: "view" as Tab, icon: Eye, label: "Viewer" },
-    { id: "lyrics" as Tab, icon: BookOpen, label: "Lyrics" },
     { id: "chat" as Tab, icon: MessageSquare, label: "Chat" },
   ];
+
+  // Determine whether to show lyrics view (vocalists always see lyrics)
+  const isVocalist = instrument === "vocals";
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
@@ -349,9 +350,7 @@ function AppContent() {
               className={cn(
                 "px-4 py-1.5 text-xs rounded font-medium transition-colors",
                 activeTab === id
-                  ? id === "lyrics"
-                    ? "text-leader bg-leader/10"
-                    : "text-chord bg-chord/10"
+                  ? "text-chord bg-chord/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
               )}
             >
@@ -499,7 +498,7 @@ function AppContent() {
                 onSessionUpdate={handleSessionUpdate}
                 onNavigateToView={navigateToView}
               />
-            ) : activeTab === "lyrics" ? (
+            ) : isVocalist ? (
               <LyricsViewer session={viewerSession} />
             ) : (
               <ChordViewer
@@ -539,19 +538,19 @@ function AppContent() {
               mobile
             />
           )}
-          {activeTab === "view" && (
-            <ChordViewer
-              session={viewerSession}
-              isAdmin={canControl}
-              onSessionUpdate={handleSessionUpdate}
-              instrument={instrument}
-              onInstrumentChange={setInstrument}
-              mobile
-            />
-          )}
-          {activeTab === "lyrics" && (
-            <LyricsViewer session={viewerSession} mobile />
-          )}
+          {activeTab === "view" &&
+            (isVocalist ? (
+              <LyricsViewer session={viewerSession} mobile />
+            ) : (
+              <ChordViewer
+                session={viewerSession}
+                isAdmin={canControl}
+                onSessionUpdate={handleSessionUpdate}
+                instrument={instrument}
+                onInstrumentChange={setInstrument}
+                mobile
+              />
+            ))}
           {activeTab === "chat" && (
             <BandChat
               userProfile={userProfile}
@@ -566,7 +565,7 @@ function AppContent() {
         className="lg:hidden border-t border-border appbar shrink-0 safe-area-bottom"
         data-ocid="mobile_nav.panel"
       >
-        <div className="grid grid-cols-5 h-16">
+        <div className="grid grid-cols-4 h-16">
           {tabs.map(({ id, icon: Icon, label }) => (
             <button
               type="button"
@@ -575,11 +574,7 @@ function AppContent() {
               data-ocid={`mobile_nav.${id}.tab`}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 transition-colors min-h-[44px]",
-                activeTab === id
-                  ? id === "lyrics"
-                    ? "text-leader"
-                    : "text-chord"
-                  : "text-muted-foreground",
+                activeTab === id ? "text-chord" : "text-muted-foreground",
               )}
             >
               <Icon className="w-5 h-5" />
