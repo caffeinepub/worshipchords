@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 200 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.375rem;
+    /* Dark Music Studio Theme */
+    --background: 0.12 0.012 222;
+    --foreground: 0.92 0.012 218;
+    --card: 0.18 0.016 222;
+    --card-foreground: 0.92 0.012 218;
+    --popover: 0.22 0.016 222;
+    --popover-foreground: 0.92 0.012 218;
+    --primary: 0.65 0.12 205;
+    --primary-foreground: 0.1 0.012 222;
+    --secondary: 0.27 0.016 222;
+    --secondary-foreground: 0.92 0.012 218;
+    --muted: 0.18 0.014 222;
+    --muted-foreground: 0.68 0.014 222;
+    --accent: 0.48 0.085 225;
+    --accent-foreground: 0.92 0.012 218;
+    --destructive: 0.6 0.22 27;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.28 0.016 222;
+    --input: 0.22 0.016 222;
+    --ring: 0.65 0.12 205;
+    /* Custom tokens */
+    --chord: 0.76 0.1 203;
+    --chord-rgb: oklch(0.76 0.1 203);
+    --leader: 0.72 0.14 295;
+    --selection: 0.38 0.07 225;
+    --success: 0.73 0.16 155;
+    --appbar-bg: 0.22 0.016 222;
+    --sidebar-bg: 0.15 0.014 222;
+    --sidebar: 0.15 0.014 222;
+    --sidebar-foreground: 0.92 0.012 218;
+    --sidebar-primary: 0.65 0.12 205;
+    --sidebar-primary-foreground: 0.1 0.012 222;
+    --sidebar-accent: 0.27 0.016 222;
+    --sidebar-accent-foreground: 0.92 0.012 218;
+    --sidebar-border: 0.28 0.016 222;
+    --sidebar-ring: 0.65 0.12 205;
+    --chart-1: 0.65 0.12 205;
+    --chart-2: 0.73 0.16 155;
+    --chart-3: 0.6 0.22 27;
+    --chart-4: 0.75 0.15 85;
+    --chart-5: 0.62 0.18 300;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .font-mono,
+  code,
+  pre {
+    font-family: "JetBrains Mono", "Courier New", monospace;
+  }
+}
+
+@layer components {
+  .appbar {
+    background-color: oklch(var(--appbar-bg));
+  }
+  .sidebar-panel {
+    background-color: oklch(var(--sidebar-bg));
+  }
+  .text-chord {
+    color: oklch(var(--chord));
+  }
+  .bg-chord {
+    background-color: oklch(var(--chord));
+  }
+  .border-chord {
+    border-color: oklch(var(--chord));
+  }
+  .text-leader {
+    color: oklch(var(--leader));
+  }
+  .bg-leader {
+    background-color: oklch(var(--leader));
+  }
+  .border-leader {
+    border-color: oklch(var(--leader));
+  }
+  .text-success {
+    color: oklch(var(--success));
+  }
+  .bg-selection {
+    background-color: oklch(var(--selection));
+  }
+  .chord-line {
+    color: oklch(var(--chord));
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre;
+  }
+  .lyric-line {
+    color: oklch(var(--foreground));
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre;
+  }
+  .section-label {
+    color: oklch(var(--muted-foreground));
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
