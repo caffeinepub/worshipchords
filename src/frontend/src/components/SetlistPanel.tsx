@@ -63,7 +63,7 @@ export default function SetlistPanel({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Setlists
         </span>
-        {isAdmin && mobile && (
+        {isAdmin && (
           <Button
             type="button"
             size="sm"
@@ -88,6 +88,18 @@ export default function SetlistPanel({
           >
             <ListMusic className="w-7 h-7 text-muted-foreground/40 mb-2" />
             <p className="text-xs text-muted-foreground">No setlists yet</p>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditSetlist(null);
+                  setFormOpen(true);
+                }}
+                className="mt-2 text-xs text-chord hover:underline"
+              >
+                Create one
+              </button>
+            )}
           </div>
         ) : (
           <div>
@@ -129,7 +141,7 @@ export default function SetlistPanel({
                     {sl.songIds.length} song{sl.songIds.length !== 1 ? "s" : ""}
                   </p>
                 </div>
-                {isAdmin && mobile && (
+                {isAdmin && (
                   <div className="hidden group-hover:flex items-center gap-1">
                     <button
                       type="button"
