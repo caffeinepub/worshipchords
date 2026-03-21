@@ -1,7 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ListMusic, Pencil, Plus, Radio, Trash2 } from "lucide-react";
+import {
+  ListMusic,
+  Pencil,
+  Plus,
+  Radio,
+  StopCircle,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ActiveSession, Setlist } from "../backend.d";
@@ -36,8 +43,11 @@ export default function SetlistPanel({
   const activeSetlistId = session?.activeSetlistId;
 
   const handleActivate = (id: string) => {
-    if (!isAdmin) return;
-    onSessionUpdate({ activeSetlistId: id });
+    if (isAdmin) {
+      const newId = activeSetlistId === id ? "" : id;
+      onSessionUpdate({ activeSetlistId: newId });
+    }
+    // Everyone navigates to the sets view on click
     onNavigateToSets?.();
   };
 
@@ -55,6 +65,11 @@ export default function SetlistPanel({
     e.stopPropagation();
     setEditSetlist(sl);
     setFormOpen(true);
+  };
+
+  const handleTakeOffline = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSessionUpdate({ activeSetlistId: "" });
   };
 
   return (
@@ -112,9 +127,7 @@ export default function SetlistPanel({
                   onClick={() => handleActivate(sl.id)}
                   data-ocid={`setlist.item.${idx + 1}`}
                   className={cn(
-                    "w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-border/50 group transition-colors",
-                    isAdmin &&
-                      "cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
+                    "w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-border/50 group transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
                     isActive
                       ? "bg-chord/10 border-l-2 border-l-chord"
                       : "hover:bg-secondary/50",
@@ -160,6 +173,17 @@ export default function SetlistPanel({
 
                   {isAdmin && (
                     <div className="hidden group-hover:flex items-center gap-1">
+                      {isActive && (
+                        <button
+                          type="button"
+                          onClick={handleTakeOffline}
+                          className="p-1 rounded text-green-500 hover:text-destructive"
+                          title="Take offline"
+                          data-ocid={`setlist.toggle.${idx + 1}`}
+                        >
+                          <StopCircle className="w-3 h-3" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => handleEditClick(e, sl)}
