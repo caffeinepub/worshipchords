@@ -355,8 +355,7 @@ function AppContent() {
     { id: "view" as Tab, icon: Eye, label: "Viewer" },
     { id: "chat" as Tab, icon: MessageSquare, label: "Chat" },
   ];
-
-  // Only non-admin, non-leader vocalists see lyrics-only view
+  // Vocalists always see lyrics-only view (regardless of role)
   const isVocalist = instrument === "vocals";
 
   return (
@@ -529,6 +528,8 @@ function AppContent() {
             ) : isVocalist ? (
               <LyricsViewer
                 session={viewerSession}
+                instrument={instrument}
+                onInstrumentChange={setInstrument}
                 hasPrev={hasPrevSong}
                 hasNext={hasNextSong}
                 onPrevSong={handlePrevSong}
@@ -568,19 +569,31 @@ function AppContent() {
             />
           )}
           {activeTab === "setlist" && (
-            <SetlistView
-              session={viewerSession}
-              isAdmin={canControl}
-              onSessionUpdate={handleSessionUpdate}
-              onNavigateToView={navigateToView}
-              mobile
-            />
+            <div className="flex flex-col h-full overflow-hidden">
+              <SetlistPanel
+                isAdmin={isAdmin}
+                session={session}
+                onSessionUpdate={handleSessionUpdate}
+                onNavigateToSets={() => setActiveTab("setlist")}
+              />
+              <div className="flex-1 overflow-hidden border-t border-border">
+                <SetlistView
+                  session={viewerSession}
+                  isAdmin={canControl}
+                  onSessionUpdate={handleSessionUpdate}
+                  onNavigateToView={navigateToView}
+                  mobile
+                />
+              </div>
+            </div>
           )}
           {activeTab === "view" &&
             (isVocalist ? (
               <LyricsViewer
                 session={viewerSession}
                 mobile
+                instrument={instrument}
+                onInstrumentChange={setInstrument}
                 hasPrev={hasPrevSong}
                 hasNext={hasNextSong}
                 onPrevSong={handlePrevSong}

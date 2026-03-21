@@ -1,9 +1,21 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Mic2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Guitar,
+  Mic,
+  Mic2,
+  Music2,
+  Piano,
+} from "lucide-react";
 import type { ReactElement } from "react";
 import type { ActiveSession } from "../backend.d";
+import {
+  INSTRUMENTS,
+  INSTRUMENT_LABELS,
+  type Instrument,
+} from "../hooks/useInstrument";
 import { useGetSong } from "../hooks/useQueries";
 import { extractTimeSignature } from "../utils/chords";
 import { stripChordsToLyrics } from "../utils/lyrics";
@@ -19,6 +31,14 @@ const LOADING_SKELETONS = [
   "60%",
 ];
 
+const INSTRUMENT_ICONS: Record<Instrument, React.ReactNode> = {
+  guitar: <Guitar className="w-3.5 h-3.5" />,
+  bass: <Music2 className="w-3.5 h-3.5" />,
+  keys: <Piano className="w-3.5 h-3.5" />,
+  vocals: <Mic className="w-3.5 h-3.5" />,
+  other: <Music2 className="w-3.5 h-3.5" />,
+};
+
 interface LyricsViewerProps {
   session: ActiveSession | null | undefined;
   mobile?: boolean;
@@ -26,6 +46,8 @@ interface LyricsViewerProps {
   hasNext?: boolean;
   onPrevSong?: () => void;
   onNextSong?: () => void;
+  instrument?: Instrument;
+  onInstrumentChange?: (instrument: Instrument) => void;
 }
 
 export default function LyricsViewer({
@@ -34,6 +56,8 @@ export default function LyricsViewer({
   hasNext = false,
   onPrevSong,
   onNextSong,
+  instrument,
+  onInstrumentChange,
 }: LyricsViewerProps) {
   const activeSongId = session?.activeSongId;
   const { data: song, isLoading } = useGetSong(activeSongId);
@@ -81,6 +105,7 @@ export default function LyricsViewer({
 
   return (
     <div className="flex flex-col h-full" data-ocid="lyrics.panel">
+      {/* Header */}
       <div className="px-6 pt-5 pb-4 border-b border-border shrink-0 bg-background">
         {isLoading ? (
           <div className="space-y-2">
@@ -150,9 +175,37 @@ export default function LyricsViewer({
             </p>
           </div>
         )}
+
+        {/* Instrument selector */}
+        {onInstrumentChange && instrument && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {INSTRUMENTS.map((ins) => (
+              <button
+                key={ins}
+                type="button"
+                onClick={() => onInstrumentChange(ins)}
+                data-ocid={`instrument.${ins}.toggle`}
+                aria-pressed={instrument === ins}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                  instrument === ins
+                    ? "bg-chord text-chord-foreground border-chord shadow-sm"
+                    : "bg-secondary/50 text-muted-foreground border-border hover:border-chord/40 hover:text-foreground",
+                )}
+              >
+                {INSTRUMENT_ICONS[ins]}
+                <span>{INSTRUMENT_LABELS[ins]}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <ScrollArea className="flex-1">
+      {/* Scrollable lyrics area — native scroll so users can scroll freely */}
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         {isLoading ? (
           <div className="p-10 space-y-5" data-ocid="lyrics.loading_state">
             {LOADING_SKELETONS.map((w) => (
@@ -185,7 +238,7 @@ export default function LyricsViewer({
             </p>
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }

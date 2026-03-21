@@ -116,6 +116,8 @@ export default function ChordViewer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const accumRef = useRef<number>(0);
+  const scrollSpeedIdxRef = useRef<number>(1);
 
   const activeSongId = session?.activeSongId;
   const transposeSteps = session ? Number(session.transposeSteps) : 0;
@@ -124,28 +126,37 @@ export default function ChordViewer({
 
   const { data: song, isLoading } = useGetSong(activeSongId);
 
-  const scrollLoop = useCallback(
-    (timestamp: number) => {
-      if (lastTimeRef.current === null) lastTimeRef.current = timestamp;
-      const delta = timestamp - lastTimeRef.current;
+  // Keep speed ref in sync so loop always reads latest value without recreating
+  scrollSpeedIdxRef.current = scrollSpeedIdx;
+
+  const scrollLoop = useCallback((timestamp: number) => {
+    if (lastTimeRef.current === null) {
       lastTimeRef.current = timestamp;
-      const el = scrollRef.current;
-      if (el) {
-        const pxPerMs = SCROLL_SPEEDS[scrollSpeedIdx].value / 1000;
-        el.scrollTop += pxPerMs * delta;
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
-          setIsScrolling(false);
-          return;
-        }
+      accumRef.current = 0;
+    }
+    const delta = timestamp - lastTimeRef.current;
+    lastTimeRef.current = timestamp;
+    const el = scrollRef.current;
+    if (el) {
+      const pxPerMs = SCROLL_SPEEDS[scrollSpeedIdxRef.current].value / 1000;
+      accumRef.current += pxPerMs * delta;
+      const intPx = Math.floor(accumRef.current);
+      if (intPx > 0) {
+        el.scrollTop += intPx;
+        accumRef.current -= intPx;
       }
-      rafRef.current = requestAnimationFrame(scrollLoop);
-    },
-    [scrollSpeedIdx],
-  );
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+        setIsScrolling(false);
+        return;
+      }
+    }
+    rafRef.current = requestAnimationFrame(scrollLoop);
+  }, []);
 
   useEffect(() => {
     if (isScrolling) {
       lastTimeRef.current = null;
+      accumRef.current = 0;
       rafRef.current = requestAnimationFrame(scrollLoop);
     } else {
       if (rafRef.current !== null) {
@@ -168,14 +179,20 @@ export default function ChordViewer({
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }
 
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   const toggleFullscreen = () => {
     const el = document.getElementById("chord-viewer-root");
     if (!document.fullscreenElement && el) {
-      el.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+      el.requestFullscreen().catch(() => {});
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
     }
   };
 
@@ -524,23 +541,11 @@ export default function ChordViewer({
                 Reset
               </Button>
             )}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-chord/20 text-muted-foreground hover:text-chord transition-colors"
-              data-ocid="controls.toggle"
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-3.5 h-3.5" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5" />
-              )}
-            </button>
           </div>
         </div>
       )}
 
-      {/* Scroll Controls */}
+      {/* Scroll Controls + Fullscreen (visible to all users) */}
       {song && (
         <div className="px-4 py-2 border-b border-border bg-background/60 flex items-center gap-2 shrink-0">
           <button
@@ -579,18 +584,34 @@ export default function ChordViewer({
               </button>
             ))}
           </div>
-          {!isScrolling && (
+          <div className="ml-auto flex items-center gap-1.5">
+            {!isScrolling && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (scrollRef.current) scrollRef.current.scrollTop = 0;
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-secondary/60"
+                data-ocid="scroll.top_button"
+              >
+                ↑ Top
+              </button>
+            )}
+            {/* Fullscreen — available to all users */}
             <button
               type="button"
-              onClick={() => {
-                if (scrollRef.current) scrollRef.current.scrollTop = 0;
-              }}
-              className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-secondary/60"
-              data-ocid="scroll.top_button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-chord/20 text-muted-foreground hover:text-chord transition-colors border border-border"
+              data-ocid="controls.toggle"
             >
-              ↑ Top
+              {isFullscreen ? (
+                <Minimize2 className="w-3.5 h-3.5" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
             </button>
-          )}
+          </div>
         </div>
       )}
 
