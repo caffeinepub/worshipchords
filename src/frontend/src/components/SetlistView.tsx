@@ -1,7 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, ListMusic, Music2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ListMusic,
+  Music2,
+  Radio,
+} from "lucide-react";
 import type { ActiveSession } from "../backend.d";
 import { useListSetlists, useListSongs } from "../hooks/useQueries";
 import { extractTimeSignature } from "../utils/chords";
@@ -16,6 +22,7 @@ interface SetlistViewProps {
 
 export default function SetlistView({
   session,
+  isAdmin,
   onSessionUpdate,
   onNavigateToView,
   mobile,
@@ -62,6 +69,48 @@ export default function SetlistView({
       onSessionUpdate({ activeSongId: nextSong.id });
       onNavigateToView();
     }
+  };
+
+  // Determine empty state content based on role
+  const renderEmptyState = () => {
+    if (isAdmin) {
+      return (
+        <div
+          className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center"
+          data-ocid="setlist_view.empty_state"
+        >
+          <div className="w-12 h-12 rounded-full bg-chord/10 flex items-center justify-center">
+            <ListMusic className="w-6 h-6 text-chord/50" />
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">
+            No setlist active
+          </p>
+          <p className="text-xs text-muted-foreground/60 max-w-[200px]">
+            Select a setlist from the sidebar to go live
+          </p>
+        </div>
+      );
+    }
+    // Non-admin: waiting state
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center"
+        data-ocid="setlist_view.empty_state"
+      >
+        <div className="relative w-14 h-14 rounded-full bg-leader/10 flex items-center justify-center">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-leader/20" />
+          <Radio className="w-6 h-6 text-leader/60 relative" />
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-sm text-muted-foreground font-medium">
+            Waiting for worship leader…
+          </p>
+          <p className="text-xs text-muted-foreground/60 max-w-[220px] leading-relaxed">
+            Your worship leader hasn't activated a set yet. Stand by.
+          </p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -124,20 +173,7 @@ export default function SetlistView({
 
       <ScrollArea className="flex-1">
         {!activeSetlist ? (
-          <div
-            className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center"
-            data-ocid="setlist_view.empty_state"
-          >
-            <div className="w-12 h-12 rounded-full bg-chord/10 flex items-center justify-center">
-              <ListMusic className="w-6 h-6 text-chord/50" />
-            </div>
-            <p className="text-sm text-muted-foreground font-medium">
-              No setlist selected
-            </p>
-            <p className="text-xs text-muted-foreground/60">
-              Choose a setlist from the sidebar to get started
-            </p>
-          </div>
+          renderEmptyState()
         ) : setlistSongs.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center"

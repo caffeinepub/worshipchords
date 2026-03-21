@@ -103,69 +103,87 @@ export default function SetlistPanel({
           </div>
         ) : (
           <div>
-            {setlists.map((sl, idx) => (
-              <button
-                type="button"
-                key={sl.id}
-                onClick={() => handleActivate(sl.id)}
-                data-ocid={`setlist.item.${idx + 1}`}
-                className={cn(
-                  "w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-border/50 group transition-colors",
-                  isAdmin &&
-                    "cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
-                  activeSetlistId === sl.id
-                    ? "bg-chord/10 border-l-2 border-l-chord"
-                    : "hover:bg-secondary/50",
-                )}
-              >
-                <Radio
+            {setlists.map((sl, idx) => {
+              const isActive = activeSetlistId === sl.id;
+              return (
+                <button
+                  type="button"
+                  key={sl.id}
+                  onClick={() => handleActivate(sl.id)}
+                  data-ocid={`setlist.item.${idx + 1}`}
                   className={cn(
-                    "w-3.5 h-3.5 shrink-0",
-                    activeSetlistId === sl.id
-                      ? "text-chord"
-                      : "text-muted-foreground/40",
+                    "w-full text-left flex items-center gap-2 px-3 py-2.5 border-b border-border/50 group transition-colors",
+                    isAdmin &&
+                      "cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
+                    isActive
+                      ? "bg-chord/10 border-l-2 border-l-chord"
+                      : "hover:bg-secondary/50",
                   )}
-                />
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={cn(
-                      "text-sm font-medium truncate",
-                      activeSetlistId === sl.id
-                        ? "text-chord"
-                        : "text-foreground",
+                >
+                  {/* Live indicator dot or radio icon */}
+                  {isActive ? (
+                    <span className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                    </span>
+                  ) : (
+                    <Radio className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p
+                        className={cn(
+                          "text-sm font-medium truncate",
+                          isActive ? "text-chord" : "text-foreground",
+                        )}
+                      >
+                        {sl.name}
+                      </p>
+                      {isActive && (
+                        <span className="inline-flex items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-widest bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/30 leading-4 shrink-0">
+                          LIVE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {sl.songIds.length} song
+                      {sl.songIds.length !== 1 ? "s" : ""}
+                    </p>
+                    {/* "Tap to go live" hint for admins on inactive items */}
+                    {isAdmin && !isActive && (
+                      <p className="text-[10px] text-muted-foreground/40 group-hover:text-muted-foreground transition-colors mt-0.5">
+                        Tap to go live
+                      </p>
                     )}
-                  >
-                    {sl.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {sl.songIds.length} song{sl.songIds.length !== 1 ? "s" : ""}
-                  </p>
-                </div>
-                {isAdmin && (
-                  <div className="hidden group-hover:flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => handleEditClick(e, sl)}
-                      className="p-1 rounded text-muted-foreground hover:text-chord"
-                      data-ocid={`setlist.edit_button.${idx + 1}`}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(sl);
-                      }}
-                      className="p-1 rounded text-muted-foreground hover:text-destructive"
-                      data-ocid={`setlist.delete_button.${idx + 1}`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
                   </div>
-                )}
-              </button>
-            ))}
+
+                  {isAdmin && (
+                    <div className="hidden group-hover:flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleEditClick(e, sl)}
+                        className="p-1 rounded text-muted-foreground hover:text-chord"
+                        data-ocid={`setlist.edit_button.${idx + 1}`}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(sl);
+                        }}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive"
+                        data-ocid={`setlist.delete_button.${idx + 1}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </ScrollArea>
