@@ -571,14 +571,22 @@ function AppContent() {
           )}
           {activeTab === "setlist" && (
             <div className="flex flex-col h-full overflow-hidden">
-              <SetlistPanel
-                isAdmin={isAdmin}
-                session={session}
-                onSessionUpdate={handleSessionUpdate}
-                onNavigateToSets={() => setActiveTab("setlist")}
-                mobile
-              />
-              <div className="flex-1 overflow-hidden border-t border-border">
+              {canControl && (
+                <div className="shrink-0">
+                  <SetlistPanel
+                    isAdmin={isAdmin}
+                    session={session}
+                    onSessionUpdate={handleSessionUpdate}
+                    onNavigateToSets={() => setActiveTab("setlist")}
+                  />
+                </div>
+              )}
+              <div
+                className={cn(
+                  "overflow-hidden border-border",
+                  canControl ? "flex-1 border-t" : "h-full",
+                )}
+              >
                 <SetlistView
                   session={viewerSession}
                   isAdmin={canControl}
