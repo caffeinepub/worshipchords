@@ -198,6 +198,16 @@ export function useSaveUserProfile() {
   });
 }
 
+export function useFetchSongUrl() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (url: string) => {
+      if (!actor) throw new Error("No actor");
+      return (actor as any).fetchSongUrl(url) as Promise<string>;
+    },
+  });
+}
+
 // ─── Worship Leader Queries ───────────────────────────────────────────────────
 // These methods are in backend.d.ts but not yet in backend.ts (auto-generated).
 // We cast actor as any to call them at runtime.

@@ -12,6 +12,7 @@ import Iter "mo:core/Iter";
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import OutCall "http-outcalls/outcall";
 
 actor {
   type SongId = Text;
@@ -322,6 +323,9 @@ actor {
   };
 
   public shared ({ caller }) func postMessage(authorName : Text, text : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can post messages");
+    };
     messagesList.add({
       id = nextMessageId;
       authorName;
@@ -340,5 +344,17 @@ actor {
     messagesList.toArray().filter(
       func(m) { m.timestamp > timestamp }
     );
+  };
+
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
+  };
+
+  public shared ({ caller }) func fetchSongUrl(url : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized");
+    };
+    let result = await OutCall.httpGetRequest(url, [], transform);
+    result;
   };
 };

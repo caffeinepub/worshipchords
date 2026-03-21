@@ -89,8 +89,27 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
 export type SongId = string;
+export type SetlistId = string;
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
 export type MessageId = bigint;
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
+}
 export interface Song {
     id: SongId;
     bpm: bigint;
@@ -118,9 +137,18 @@ export interface ActiveSession {
     activeSongId?: SongId;
     capoFret: bigint;
 }
-export type SetlistId = string;
+export interface WorshipLeaderRequest {
+    status: RequestStatus;
+    requester: Principal;
+    requestedAt: bigint;
+}
 export interface UserProfile {
     name: string;
+}
+export enum RequestStatus {
+    pending = "pending",
+    denied = "denied",
+    approved = "approved"
 }
 export enum UserRole {
     admin = "admin",
@@ -129,28 +157,42 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    approveWorshipLeader(user: Principal): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignWorshipLeader(user: Principal): Promise<void>;
     createOrUpdateSetlist(setlist: Setlist): Promise<void>;
     createOrUpdateSong(inputSong: Song): Promise<void>;
     deleteSetlist(id: SetlistId): Promise<void>;
     deleteSong(id: SongId): Promise<void>;
+    denyWorshipLeader(user: Principal): Promise<void>;
+    fetchSongUrl(url: string): Promise<string>;
     getActiveSession(): Promise<ActiveSession>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getMyWorshipLeaderRequestStatus(): Promise<RequestStatus | null>;
     getSetlist(id: SetlistId): Promise<Setlist>;
     getSong(id: SongId): Promise<Song>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getWorshipLeaderSession(leader: Principal): Promise<ActiveSession>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerWorshipLeader(): Promise<boolean>;
     listMessagesSince(timestamp: bigint): Promise<Array<Message>>;
+    listPendingWorshipLeaderRequests(): Promise<Array<WorshipLeaderRequest>>;
     listRecentMessages(): Promise<Array<Message>>;
     listSetlists(): Promise<Array<Setlist>>;
     listSongs(): Promise<Array<Song>>;
+    listWorshipLeaders(): Promise<Array<Principal>>;
     postMessage(authorName: string, text: string): Promise<void>;
+    releaseWorshipLeader(): Promise<void>;
+    removeWorshipLeader(user: Principal): Promise<void>;
+    requestWorshipLeader(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSongs(searchTerm: string): Promise<Array<Song>>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
     updateActiveSession(newSession: ActiveSession): Promise<void>;
+    updateMyWorshipLeaderSession(session: ActiveSession): Promise<void>;
 }
-import type { ActiveSession as _ActiveSession, SetlistId as _SetlistId, SongId as _SongId, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { ActiveSession as _ActiveSession, RequestStatus as _RequestStatus, SetlistId as _SetlistId, SongId as _SongId, UserProfile as _UserProfile, UserRole as _UserRole, WorshipLeaderRequest as _WorshipLeaderRequest } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -167,6 +209,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async approveWorshipLeader(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.approveWorshipLeader(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.approveWorshipLeader(arg0);
+            return result;
+        }
+    }
     async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
@@ -178,6 +234,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async assignWorshipLeader(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignWorshipLeader(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignWorshipLeader(arg0);
             return result;
         }
     }
@@ -237,6 +307,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async denyWorshipLeader(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.denyWorshipLeader(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.denyWorshipLeader(arg0);
+            return result;
+        }
+    }
+    async fetchSongUrl(arg0: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.fetchSongUrl(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.fetchSongUrl(arg0);
+            return result;
+        }
+    }
     async getActiveSession(): Promise<ActiveSession> {
         if (this.processError) {
             try {
@@ -277,6 +375,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getCallerUserRole();
             return from_candid_UserRole_n8(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMyWorshipLeaderRequestStatus(): Promise<RequestStatus | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyWorshipLeaderRequestStatus();
+                return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyWorshipLeaderRequestStatus();
+            return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSetlist(arg0: SetlistId): Promise<Setlist> {
@@ -321,6 +433,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getWorshipLeaderSession(arg0: Principal): Promise<ActiveSession> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWorshipLeaderSession(arg0);
+                return from_candid_ActiveSession_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWorshipLeaderSession(arg0);
+            return from_candid_ActiveSession_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async isCallerAdmin(): Promise<boolean> {
         if (this.processError) {
             try {
@@ -332,6 +458,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async isCallerWorshipLeader(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerWorshipLeader();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerWorshipLeader();
             return result;
         }
     }
@@ -347,6 +487,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.listMessagesSince(arg0);
             return result;
+        }
+    }
+    async listPendingWorshipLeaderRequests(): Promise<Array<WorshipLeaderRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.listPendingWorshipLeaderRequests();
+                return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.listPendingWorshipLeaderRequests();
+            return from_candid_vec_n13(this._uploadFile, this._downloadFile, result);
         }
     }
     async listRecentMessages(): Promise<Array<Message>> {
@@ -391,6 +545,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async listWorshipLeaders(): Promise<Array<Principal>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.listWorshipLeaders();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.listWorshipLeaders();
+            return result;
+        }
+    }
     async postMessage(arg0: string, arg1: string): Promise<void> {
         if (this.processError) {
             try {
@@ -402,6 +570,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.postMessage(arg0, arg1);
+            return result;
+        }
+    }
+    async releaseWorshipLeader(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.releaseWorshipLeader();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.releaseWorshipLeader();
+            return result;
+        }
+    }
+    async removeWorshipLeader(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeWorshipLeader(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeWorshipLeader(arg0);
+            return result;
+        }
+    }
+    async requestWorshipLeader(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.requestWorshipLeader();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.requestWorshipLeader();
             return result;
         }
     }
@@ -433,17 +643,45 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateActiveSession(arg0: ActiveSession): Promise<void> {
+    async transform(arg0: TransformationInput): Promise<TransformationOutput> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateActiveSession(to_candid_ActiveSession_n10(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.transform(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateActiveSession(to_candid_ActiveSession_n10(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.transform(arg0);
+            return result;
+        }
+    }
+    async updateActiveSession(arg0: ActiveSession): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateActiveSession(to_candid_ActiveSession_n16(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateActiveSession(to_candid_ActiveSession_n16(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async updateMyWorshipLeaderSession(arg0: ActiveSession): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateMyWorshipLeaderSession(to_candid_ActiveSession_n16(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateMyWorshipLeaderSession(to_candid_ActiveSession_n16(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -451,8 +689,17 @@ export class Backend implements backendInterface {
 function from_candid_ActiveSession_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ActiveSession): ActiveSession {
     return from_candid_record_n4(_uploadFile, _downloadFile, value);
 }
+function from_candid_RequestStatus_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RequestStatus): RequestStatus {
+    return from_candid_variant_n12(_uploadFile, _downloadFile, value);
+}
 function from_candid_UserRole_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n9(_uploadFile, _downloadFile, value);
+}
+function from_candid_WorshipLeaderRequest_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorshipLeaderRequest): WorshipLeaderRequest {
+    return from_candid_record_n15(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RequestStatus]): RequestStatus | null {
+    return value.length === 0 ? null : from_candid_RequestStatus_n11(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_SetlistId]): SetlistId | null {
     return value.length === 0 ? null : value[0];
@@ -462,6 +709,21 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 }
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    status: _RequestStatus;
+    requester: Principal;
+    requestedAt: bigint;
+}): {
+    status: RequestStatus;
+    requester: Principal;
+    requestedAt: bigint;
+} {
+    return {
+        status: from_candid_RequestStatus_n11(_uploadFile, _downloadFile, value.status),
+        requester: value.requester,
+        requestedAt: value.requestedAt
+    };
 }
 function from_candid_record_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     transposeSteps: bigint;
@@ -487,6 +749,15 @@ function from_candid_record_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint
         capoFret: value.capoFret
     };
 }
+function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    pending: null;
+} | {
+    denied: null;
+} | {
+    approved: null;
+}): RequestStatus {
+    return "pending" in value ? RequestStatus.pending : "denied" in value ? RequestStatus.denied : "approved" in value ? RequestStatus.approved : value;
+}
 function from_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
@@ -496,13 +767,16 @@ function from_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function to_candid_ActiveSession_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ActiveSession): _ActiveSession {
-    return to_candid_record_n11(_uploadFile, _downloadFile, value);
+function from_candid_vec_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorshipLeaderRequest>): Array<WorshipLeaderRequest> {
+    return value.map((x)=>from_candid_WorshipLeaderRequest_n14(_uploadFile, _downloadFile, x));
+}
+function to_candid_ActiveSession_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ActiveSession): _ActiveSession {
+    return to_candid_record_n17(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     transposeSteps: bigint;
     chordMode: string;
     activeSetlistId?: SetlistId;

@@ -1,12 +1,12 @@
-import type { RequestStatus } from "../backend.d";
+import { RequestStatus } from "../backend.d";
 
 export type RequestStatusVariant = "pending" | "approved" | "denied";
 
 export function getRequestStatusVariant(
   status: RequestStatus,
 ): RequestStatusVariant {
-  if ("#pending" in status) return "pending";
-  if ("#approved" in status) return "approved";
+  if (status === RequestStatus.pending) return "pending";
+  if (status === RequestStatus.approved) return "approved";
   return "denied";
 }
 
@@ -14,19 +14,19 @@ export function isRequestPending(
   status: RequestStatus | null | undefined,
 ): boolean {
   if (!status) return false;
-  return "#pending" in status;
+  return status === RequestStatus.pending;
 }
 
 export function isRequestApproved(
   status: RequestStatus | null | undefined,
 ): boolean {
   if (!status) return false;
-  return "#approved" in status;
+  return status === RequestStatus.approved;
 }
 
 export function isRequestDenied(
   status: RequestStatus | null | undefined,
 ): boolean {
   if (!status) return false;
-  return "#denied" in status;
+  return status === RequestStatus.denied;
 }

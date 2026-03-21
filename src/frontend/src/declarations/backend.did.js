@@ -37,6 +37,11 @@ export const ActiveSession = IDL.Record({
   'capoFret' : IDL.Nat,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const RequestStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'denied' : IDL.Null,
+  'approved' : IDL.Null,
+});
 export const MessageId = IDL.Nat;
 export const Message = IDL.Record({
   'id' : MessageId,
@@ -44,17 +49,49 @@ export const Message = IDL.Record({
   'authorName' : IDL.Text,
   'timestamp' : IDL.Int,
 });
+export const WorshipLeaderRequest = IDL.Record({
+  'status' : RequestStatus,
+  'requester' : IDL.Principal,
+  'requestedAt' : IDL.Int,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'approveWorshipLeader' : IDL.Func([IDL.Principal], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'assignWorshipLeader' : IDL.Func([IDL.Principal], [], []),
   'createOrUpdateSetlist' : IDL.Func([Setlist], [], []),
   'createOrUpdateSong' : IDL.Func([Song], [], []),
   'deleteSetlist' : IDL.Func([SetlistId], [], []),
   'deleteSong' : IDL.Func([SongId], [], []),
+  'denyWorshipLeader' : IDL.Func([IDL.Principal], [], []),
+  'fetchSongUrl' : IDL.Func([IDL.Text], [IDL.Text], []),
   'getActiveSession' : IDL.Func([], [ActiveSession], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getMyWorshipLeaderRequestStatus' : IDL.Func(
+      [],
+      [IDL.Opt(RequestStatus)],
+      ['query'],
+    ),
   'getSetlist' : IDL.Func([SetlistId], [Setlist], ['query']),
   'getSong' : IDL.Func([SongId], [Song], ['query']),
   'getUserProfile' : IDL.Func(
@@ -62,15 +99,36 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getWorshipLeaderSession' : IDL.Func(
+      [IDL.Principal],
+      [ActiveSession],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerWorshipLeader' : IDL.Func([], [IDL.Bool], ['query']),
   'listMessagesSince' : IDL.Func([IDL.Int], [IDL.Vec(Message)], ['query']),
+  'listPendingWorshipLeaderRequests' : IDL.Func(
+      [],
+      [IDL.Vec(WorshipLeaderRequest)],
+      ['query'],
+    ),
   'listRecentMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
   'listSetlists' : IDL.Func([], [IDL.Vec(Setlist)], ['query']),
   'listSongs' : IDL.Func([], [IDL.Vec(Song)], ['query']),
+  'listWorshipLeaders' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'postMessage' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'releaseWorshipLeader' : IDL.Func([], [], []),
+  'removeWorshipLeader' : IDL.Func([IDL.Principal], [], []),
+  'requestWorshipLeader' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchSongs' : IDL.Func([IDL.Text], [IDL.Vec(Song)], ['query']),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
   'updateActiveSession' : IDL.Func([ActiveSession], [], []),
+  'updateMyWorshipLeaderSession' : IDL.Func([ActiveSession], [], []),
 });
 
 export const idlInitArgs = [];
@@ -105,6 +163,11 @@ export const idlFactory = ({ IDL }) => {
     'capoFret' : IDL.Nat,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const RequestStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'denied' : IDL.Null,
+    'approved' : IDL.Null,
+  });
   const MessageId = IDL.Nat;
   const Message = IDL.Record({
     'id' : MessageId,
@@ -112,17 +175,46 @@ export const idlFactory = ({ IDL }) => {
     'authorName' : IDL.Text,
     'timestamp' : IDL.Int,
   });
+  const WorshipLeaderRequest = IDL.Record({
+    'status' : RequestStatus,
+    'requester' : IDL.Principal,
+    'requestedAt' : IDL.Int,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'approveWorshipLeader' : IDL.Func([IDL.Principal], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'assignWorshipLeader' : IDL.Func([IDL.Principal], [], []),
     'createOrUpdateSetlist' : IDL.Func([Setlist], [], []),
     'createOrUpdateSong' : IDL.Func([Song], [], []),
     'deleteSetlist' : IDL.Func([SetlistId], [], []),
     'deleteSong' : IDL.Func([SongId], [], []),
+    'denyWorshipLeader' : IDL.Func([IDL.Principal], [], []),
+    'fetchSongUrl' : IDL.Func([IDL.Text], [IDL.Text], []),
     'getActiveSession' : IDL.Func([], [ActiveSession], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getMyWorshipLeaderRequestStatus' : IDL.Func(
+        [],
+        [IDL.Opt(RequestStatus)],
+        ['query'],
+      ),
     'getSetlist' : IDL.Func([SetlistId], [Setlist], ['query']),
     'getSong' : IDL.Func([SongId], [Song], ['query']),
     'getUserProfile' : IDL.Func(
@@ -130,15 +222,36 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getWorshipLeaderSession' : IDL.Func(
+        [IDL.Principal],
+        [ActiveSession],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerWorshipLeader' : IDL.Func([], [IDL.Bool], ['query']),
     'listMessagesSince' : IDL.Func([IDL.Int], [IDL.Vec(Message)], ['query']),
+    'listPendingWorshipLeaderRequests' : IDL.Func(
+        [],
+        [IDL.Vec(WorshipLeaderRequest)],
+        ['query'],
+      ),
     'listRecentMessages' : IDL.Func([], [IDL.Vec(Message)], ['query']),
     'listSetlists' : IDL.Func([], [IDL.Vec(Setlist)], ['query']),
     'listSongs' : IDL.Func([], [IDL.Vec(Song)], ['query']),
+    'listWorshipLeaders' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'postMessage' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'releaseWorshipLeader' : IDL.Func([], [], []),
+    'removeWorshipLeader' : IDL.Func([IDL.Principal], [], []),
+    'requestWorshipLeader' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchSongs' : IDL.Func([IDL.Text], [IDL.Vec(Song)], ['query']),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
     'updateActiveSession' : IDL.Func([ActiveSession], [], []),
+    'updateMyWorshipLeaderSession' : IDL.Func([ActiveSession], [], []),
   });
 };
 

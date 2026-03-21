@@ -25,6 +25,9 @@ export interface Message {
   'timestamp' : bigint,
 }
 export type MessageId = bigint;
+export type RequestStatus = { 'pending' : null } |
+  { 'denied' : null } |
+  { 'approved' : null };
 export interface Setlist {
   'id' : SetlistId,
   'name' : string,
@@ -40,32 +43,69 @@ export interface Song {
   'chordSheet' : string,
 }
 export type SongId = string;
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface WorshipLeaderRequest {
+  'status' : RequestStatus,
+  'requester' : Principal,
+  'requestedAt' : bigint,
+}
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'approveWorshipLeader' : ActorMethod<[Principal], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignWorshipLeader' : ActorMethod<[Principal], undefined>,
   'createOrUpdateSetlist' : ActorMethod<[Setlist], undefined>,
   'createOrUpdateSong' : ActorMethod<[Song], undefined>,
   'deleteSetlist' : ActorMethod<[SetlistId], undefined>,
   'deleteSong' : ActorMethod<[SongId], undefined>,
+  'denyWorshipLeader' : ActorMethod<[Principal], undefined>,
+  'fetchSongUrl' : ActorMethod<[string], string>,
   'getActiveSession' : ActorMethod<[], ActiveSession>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getMyWorshipLeaderRequestStatus' : ActorMethod<[], [] | [RequestStatus]>,
   'getSetlist' : ActorMethod<[SetlistId], Setlist>,
   'getSong' : ActorMethod<[SongId], Song>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getWorshipLeaderSession' : ActorMethod<[Principal], ActiveSession>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCallerWorshipLeader' : ActorMethod<[], boolean>,
   'listMessagesSince' : ActorMethod<[bigint], Array<Message>>,
+  'listPendingWorshipLeaderRequests' : ActorMethod<
+    [],
+    Array<WorshipLeaderRequest>
+  >,
   'listRecentMessages' : ActorMethod<[], Array<Message>>,
   'listSetlists' : ActorMethod<[], Array<Setlist>>,
   'listSongs' : ActorMethod<[], Array<Song>>,
+  'listWorshipLeaders' : ActorMethod<[], Array<Principal>>,
   'postMessage' : ActorMethod<[string, string], undefined>,
+  'releaseWorshipLeader' : ActorMethod<[], undefined>,
+  'removeWorshipLeader' : ActorMethod<[Principal], undefined>,
+  'requestWorshipLeader' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSongs' : ActorMethod<[string], Array<Song>>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'updateActiveSession' : ActorMethod<[ActiveSession], undefined>,
+  'updateMyWorshipLeaderSession' : ActorMethod<[ActiveSession], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
