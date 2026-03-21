@@ -220,6 +220,7 @@ Nothing compares to this`,
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>("view");
+  const [localSongId, setLocalSongId] = useState<string | null>(null);
   const [showRedirectDialog, setShowRedirectDialog] = useState(false);
   const [followingLeader, setFollowingLeaderState] = useState<string | null>(
     readFollowingLeader,
@@ -310,6 +311,8 @@ function AppContent() {
           lastUpdated: now,
           ...updates,
         });
+      } else if (updates.activeSongId) {
+        setLocalSongId(updates.activeSongId as string);
       }
     },
     [session, isAdmin, isWorshipLeader, updateSession, updateLeaderSession],
@@ -321,17 +324,25 @@ function AppContent() {
 
   const navigateToView = useCallback(() => setActiveTab("view"), []);
 
+  // Effective viewer session (band members get local song selection)
+  const effectiveViewerSession: ActiveSession | null | undefined =
+    localSongId && !isAdmin && !isWorshipLeader && viewerSession
+      ? ({ ...viewerSession, activeSongId: localSongId } as ActiveSession)
+      : viewerSession;
+
   // Setlist navigation for the viewer
-  const activeSetlist = viewerSession?.activeSetlistId
-    ? setlists.find((s) => s.id === viewerSession.activeSetlistId)
+  const activeSetlist = effectiveViewerSession?.activeSetlistId
+    ? setlists.find((s) => s.id === effectiveViewerSession.activeSetlistId)
     : null;
   const setlistSongs = activeSetlist
     ? activeSetlist.songIds
         .map((id) => songs.find((s) => s.id === id))
         .filter(Boolean)
     : [];
-  const currentSongIdx = viewerSession?.activeSongId
-    ? setlistSongs.findIndex((s) => s?.id === viewerSession.activeSongId)
+  const currentSongIdx = effectiveViewerSession?.activeSongId
+    ? setlistSongs.findIndex(
+        (s) => s?.id === effectiveViewerSession.activeSongId,
+      )
     : -1;
   const hasPrevSong = currentSongIdx > 0;
   const hasNextSong =
@@ -520,14 +531,14 @@ function AppContent() {
           <div className="overflow-hidden flex flex-col h-full">
             {activeTab === "setlist" ? (
               <SetlistView
-                session={viewerSession}
+                session={effectiveViewerSession}
                 isAdmin={canControl}
                 onSessionUpdate={handleSessionUpdate}
                 onNavigateToView={navigateToView}
               />
             ) : isVocalist ? (
               <LyricsViewer
-                session={viewerSession}
+                session={effectiveViewerSession}
                 instrument={instrument}
                 onInstrumentChange={setInstrument}
                 hasPrev={hasPrevSong}
@@ -537,7 +548,7 @@ function AppContent() {
               />
             ) : (
               <ChordViewer
-                session={viewerSession}
+                session={effectiveViewerSession}
                 isAdmin={canControl}
                 onSessionUpdate={handleSessionUpdate}
                 instrument={instrument}
@@ -588,7 +599,7 @@ function AppContent() {
                 )}
               >
                 <SetlistView
-                  session={viewerSession}
+                  session={effectiveViewerSession}
                   isAdmin={canControl}
                   onSessionUpdate={handleSessionUpdate}
                   onNavigateToView={navigateToView}
@@ -600,7 +611,7 @@ function AppContent() {
           {activeTab === "view" &&
             (isVocalist ? (
               <LyricsViewer
-                session={viewerSession}
+                session={effectiveViewerSession}
                 mobile
                 instrument={instrument}
                 onInstrumentChange={setInstrument}
@@ -611,7 +622,7 @@ function AppContent() {
               />
             ) : (
               <ChordViewer
-                session={viewerSession}
+                session={effectiveViewerSession}
                 isAdmin={canControl}
                 onSessionUpdate={handleSessionUpdate}
                 instrument={instrument}

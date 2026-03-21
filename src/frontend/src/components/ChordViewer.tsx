@@ -287,7 +287,7 @@ export default function ChordViewer({
       id="chord-viewer-root"
       style={
         isSimulatedFullscreen
-          ? { position: "fixed", inset: 0, zIndex: 9999, overflowY: "auto" }
+          ? { position: "fixed", inset: 0, zIndex: 9999 }
           : undefined
       }
       className={cn("flex flex-col h-full", isFullscreen && "bg-background")}
