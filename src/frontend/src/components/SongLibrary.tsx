@@ -18,6 +18,7 @@ interface SongLibraryProps {
   onSessionUpdate: (updates: Partial<ActiveSession>) => void;
   mobile?: boolean;
   getPrincipal?: () => any;
+  onNavigateToView?: () => void;
 }
 
 export default function SongLibrary({
@@ -26,6 +27,7 @@ export default function SongLibrary({
   onSessionUpdate,
   mobile = false,
   getPrincipal = () => null,
+  onNavigateToView,
 }: SongLibraryProps) {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -38,6 +40,7 @@ export default function SongLibrary({
   const handleSelectSong = (id: string) => {
     if (!isAdmin) return;
     onSessionUpdate({ activeSongId: id });
+    onNavigateToView?.();
   };
 
   const handleDelete = async (song: Song) => {
@@ -138,7 +141,7 @@ export default function SongLibrary({
             {!isAdmin && !search && (
               <p className="mt-3 text-xs text-muted-foreground/60 flex items-center gap-1.5">
                 <Lock className="w-3 h-3" />
-                Sign in as worship leader to add songs
+                Only worship leaders and admins can add songs
               </p>
             )}
           </div>
@@ -212,7 +215,7 @@ export default function SongLibrary({
           <div className="px-3 py-3 border-t border-border/50">
             <p className="text-xs text-muted-foreground/50 flex items-center gap-1.5">
               <Lock className="w-3 h-3 shrink-0" />
-              Sign in as worship leader to add songs
+              Only worship leaders and admins can add songs
             </p>
           </div>
         )}

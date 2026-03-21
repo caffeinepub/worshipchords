@@ -63,7 +63,7 @@ export default function SetlistPanel({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Setlists
         </span>
-        {isAdmin && (
+        {isAdmin && mobile && (
           <Button
             type="button"
             size="sm"
@@ -129,7 +129,7 @@ export default function SetlistPanel({
                     {sl.songIds.length} song{sl.songIds.length !== 1 ? "s" : ""}
                   </p>
                 </div>
-                {isAdmin && (
+                {isAdmin && mobile && (
                   <div className="hidden group-hover:flex items-center gap-1">
                     <button
                       type="button"

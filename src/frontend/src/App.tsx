@@ -360,7 +360,7 @@ function AppContent() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
-      <header className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 z-10">
+      <header className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 overflow-hidden">
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded bg-chord/20 flex items-center justify-center">
             <Music2 className="w-4 h-4 text-chord" />
@@ -370,7 +370,7 @@ function AppContent() {
           </span>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
+        <nav className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0 justify-center">
           {tabs.map(({ id, label }) => (
             <button
               type="button"
@@ -389,10 +389,10 @@ function AppContent() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto shrink-0">
           {isAdmin && (
             <div className="flex items-center gap-1.5">
-              <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded bg-chord/10 border border-chord/20">
+              <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-chord/10 border border-chord/20">
                 <Shield className="w-3 h-3 text-chord" />
                 <span className="text-[10px] font-semibold text-chord uppercase tracking-wide">
                   Admin
@@ -410,7 +410,7 @@ function AppContent() {
           )}
 
           {isAdmin && isWorshipLeader && (
-            <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded bg-leader/10 border border-leader/20">
+            <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-leader/10 border border-leader/20">
               <Crown className="w-3 h-3 text-leader" />
               <span className="text-[10px] font-semibold text-leader uppercase tracking-wide">
                 Leader
@@ -498,10 +498,10 @@ function AppContent() {
 
       <div className="flex-1 overflow-hidden">
         <div className="hidden lg:grid lg:grid-cols-[280px_1fr_288px] h-full">
-          <div className="border-r border-border overflow-hidden flex flex-col sidebar-panel">
+          <div className="border-r border-border overflow-hidden flex flex-col h-full sidebar-panel">
             <div className="flex-1 overflow-hidden min-h-0">
               <SongLibrary
-                isAdmin={isAdmin}
+                isAdmin={canControl}
                 session={session}
                 onSessionUpdate={handleSessionUpdate}
                 getPrincipal={getPrincipal}
@@ -517,7 +517,7 @@ function AppContent() {
             </div>
           </div>
 
-          <div className="overflow-hidden flex flex-col">
+          <div className="overflow-hidden flex flex-col h-full">
             {activeTab === "setlist" ? (
               <SetlistView
                 session={viewerSession}
@@ -561,11 +561,12 @@ function AppContent() {
         <div className="lg:hidden h-full">
           {activeTab === "library" && (
             <SongLibrary
-              isAdmin={isAdmin}
+              isAdmin={canControl}
               session={session}
               onSessionUpdate={handleSessionUpdate}
               mobile
               getPrincipal={getPrincipal}
+              onNavigateToView={() => setActiveTab("view")}
             />
           )}
           {activeTab === "setlist" && (
@@ -575,6 +576,7 @@ function AppContent() {
                 session={session}
                 onSessionUpdate={handleSessionUpdate}
                 onNavigateToSets={() => setActiveTab("setlist")}
+                mobile
               />
               <div className="flex-1 overflow-hidden border-t border-border">
                 <SetlistView

@@ -1,25 +1,28 @@
 # WorshipChords
 
 ## Current State
-Fullscreen mode in both ChordViewer and LyricsViewer shows a minimal bar with: minimize button, song title, prev/next navigation, and auto-scroll controls. Time signature and BPM are only shown in the normal (non-fullscreen) header.
+The main app header contains logo, nav tabs (flex-1 center), and right-side controls (Admin badge, AdminPanel, WorshipLeaderClaimPanel, Sign In/Out). On desktop medium widths (1024-1280px), the right-side cluster causes layout overflow — content below the header is clipped or hidden.
+
+Issues:
+- SongLibrary: "Song Library" label + "+" (Add Song) button row is not visible; only the search input shows — the label row is pushed out of view.
+- ChordViewer: Song title h1 is not visible at the top of the center pane — key/BPM metadata and instrument selector appear first instead.
 
 ## Requested Changes (Diff)
 
 ### Add
-- In the fullscreen minimal bar of ChordViewer: display time signature and BPM as a compact badge/pill below or alongside the song title, visible on both mobile and desktop.
-- In the fullscreen minimal bar of LyricsViewer: same — display time signature and BPM cleanly.
-- Mobile-friendly layout: on small screens, the fullscreen bar should stack into two rows — top row has minimize + prev/next + scroll controls; bottom row (or sub-row) has song title and time sig·BPM metadata. Or use a compact two-line title block.
+- Nothing new.
 
 ### Modify
-- ChordViewer fullscreen bar: restructure the header to accommodate song metadata (title + time sig + BPM) in a mobile-friendly way. Suggested layout: minimize button on far left, then a vertical stack of `[song title]` and `[timeSig · BPM]` as a small muted line, then right-side controls (prev/next, scroll).
-- LyricsViewer fullscreen bar: same restructuring.
+- App.tsx header: Fix desktop layout to prevent overflow at 1024-1280px. Remove z-10 (serves no purpose on position:static). Make right-side controls compact. Add min-w-0 and overflow-hidden where needed.
+- SongLibrary.tsx: Ensure "Song Library" label + "+" button row is always visible above the search input. Fix any flex/overflow-hidden clipping of the first row.
+- ChordViewer.tsx: Ensure song title h1 is always the first visible element. Fix any flex height or overflow-hidden ancestor clipping.
 
 ### Remove
-- Nothing removed.
+- Nothing.
 
 ## Implementation Plan
-1. In ChordViewer fullscreen bar: replace the flat `<span>` title with a two-line block: song title on line 1, `{timeSignature} · {bpm} BPM` on line 2 in a smaller muted style.
-2. In LyricsViewer fullscreen bar: same change — two-line title block with time sig and BPM.
-3. Ensure the layout remains single-row on desktop (title block takes flex-1, controls are right-aligned) and wraps gracefully on mobile (min-width constraints relaxed, title block can shrink).
-4. Use `min-w-0` and `truncate` on title to prevent overflow. Show BPM as `text-xs text-muted-foreground font-mono`.
-5. Validate and build.
+1. Remove z-10 from App.tsx header. Audit flex children for min-w-0.
+2. Right-side header div: add shrink-0. Shorten/hide verbose badges at medium widths.
+3. Verify SongLibrary renders header row first — check parent overflow-hidden containers.
+4. Verify ChordViewer song header (shrink-0) is top of the pane — trace flex column ancestors.
+5. Validate at lg (1024px), xl (1280px), 2xl (1536px).
