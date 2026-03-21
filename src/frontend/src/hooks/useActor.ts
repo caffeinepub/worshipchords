@@ -12,10 +12,6 @@ export function useActor() {
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
-      // Eagerly capture the admin token before any async work so it's persisted
-      // to sessionStorage even if the URL changes during redirect sign-in flows.
-      const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
-
       const isAuthenticated = !!identity;
 
       if (!isAuthenticated) {
@@ -30,12 +26,12 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
+      // Read admin token from query param (?caffeineAdminToken=...) OR hash OR sessionStorage
+      const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
       await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
-    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 
