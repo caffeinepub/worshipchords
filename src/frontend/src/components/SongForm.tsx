@@ -22,7 +22,14 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Song } from "../backend.d";
 import { useCreateOrUpdateSong } from "../hooks/useQueries";
-import { KEYS } from "../utils/chords";
+import {
+  KEYS,
+  extractTimeSignature,
+  setSheetTimeSignature,
+  stripSheetMetadata,
+} from "../utils/chords";
+
+const TIME_SIGNATURES = ["4/4", "3/4", "6/8", "12/8", "2/4", "5/4", "7/8"];
 
 interface SongFormProps {
   song?: Song | null;
@@ -31,56 +38,57 @@ interface SongFormProps {
   getPrincipal: () => any;
 }
 
-// ---------------------------------------------------------------------------
-// Client-side parser for raw text pasted from worship chord websites
-// ---------------------------------------------------------------------------
 function parseWorshipText(raw: string): {
   title: string;
   key: string;
   bpm: number;
+  timeSignature: string;
   chordSheet: string;
 } {
   const lines = raw.split(/\r?\n/);
-
   let title = "";
   let key = "G";
   let bpm = 72;
+  let timeSignature = "4/4";
   const sheetLines: string[] = [];
   const metaLineIndexes = new Set<number>();
 
-  // Patterns
   const titlePattern = /^(?:Title|Song)\s*:\s*(.+)/i;
   const keyPattern = /^(?:Key(?:\s+of)?|\(Key)\s*[:\s]\s*([A-G][b#]?m?)\)?/i;
   const bpmPattern = /^(?:BPM|Tempo)\s*[:\s]\s*(\d+)/i;
+  const timeSigPattern =
+    /^(?:Time(?:\s+Signature)?|Meter|Time\s*Sig)\s*[:\s]\s*(\d+\/\d+)/i;
   const chordOnlyLinePattern =
     /^([A-G][b#]?(?:maj|min|m|sus|aug|dim|add|\d|\/|\s)*)+\s*$/;
 
   lines.forEach((line, i) => {
     const trimmed = line.trim();
-
     const titleMatch = trimmed.match(titlePattern);
     if (titleMatch) {
       title = titleMatch[1].trim();
       metaLineIndexes.add(i);
       return;
     }
-
     const keyMatch = trimmed.match(keyPattern);
     if (keyMatch) {
       key = keyMatch[1].trim();
       metaLineIndexes.add(i);
       return;
     }
-
     const bpmMatch = trimmed.match(bpmPattern);
     if (bpmMatch) {
       bpm = Number.parseInt(bpmMatch[1], 10);
       metaLineIndexes.add(i);
       return;
     }
+    const timeSigMatch = trimmed.match(timeSigPattern);
+    if (timeSigMatch) {
+      timeSignature = timeSigMatch[1].trim();
+      metaLineIndexes.add(i);
+      return;
+    }
   });
 
-  // If no title found from label, use first non-empty, non-chord line
   if (!title) {
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i].trim();
@@ -96,7 +104,6 @@ function parseWorshipText(raw: string): {
     }
   }
 
-  // If no key from label, infer from first chord found
   if (key === "G") {
     const chordGuess = raw.match(
       /\b([A-G][b#]?(?:m|maj|min)?(?:\d)?(?:\/[A-G][b#]?)?)\b/,
@@ -128,24 +135,18 @@ function parseWorshipText(raw: string): {
         "Am",
         "Bm",
       ];
-      const candidate = chordGuess[1];
-      if (validKeys.includes(candidate)) key = candidate;
+      if (validKeys.includes(chordGuess[1])) key = chordGuess[1];
     }
   }
 
-  // Build chord sheet from non-meta lines
   lines.forEach((line, i) => {
-    if (!metaLineIndexes.has(i)) {
-      sheetLines.push(line);
-    }
+    if (!metaLineIndexes.has(i)) sheetLines.push(line);
   });
-
-  // Trim leading/trailing blank lines
   while (sheetLines.length && sheetLines[0].trim() === "") sheetLines.shift();
   while (sheetLines.length && sheetLines[sheetLines.length - 1].trim() === "")
     sheetLines.pop();
 
-  return { title, key, bpm, chordSheet: sheetLines.join("\n") };
+  return { title, key, bpm, timeSignature, chordSheet: sheetLines.join("\n") };
 }
 
 export default function SongForm({
@@ -158,6 +159,8 @@ export default function SongForm({
   const [title, setTitle] = useState("");
   const [key, setKey] = useState("G");
   const [bpm, setBpm] = useState(72);
+  const [timeSignature, setTimeSignature] = useState("4/4");
+  // chordSheet state holds the sheet WITHOUT the ts metadata line
   const [chordSheet, setChordSheet] = useState("");
   const [importText, setImportText] = useState("");
   const [parseSuccess, setParseSuccess] = useState(false);
@@ -168,7 +171,9 @@ export default function SongForm({
       setTitle(song?.title ?? "");
       setKey(song?.key ?? "G");
       setBpm(song ? Number(song.bpm) : 72);
-      setChordSheet(song?.chordSheet ?? "");
+      // Extract ts from chordSheet if editing an existing song
+      setTimeSignature(song ? extractTimeSignature(song.chordSheet) : "4/4");
+      setChordSheet(song ? stripSheetMetadata(song.chordSheet) : "");
       setImportText("");
       setParseSuccess(false);
       setActiveTab("manual");
@@ -184,6 +189,7 @@ export default function SongForm({
     setTitle(parsed.title);
     setKey(parsed.key);
     setBpm(parsed.bpm);
+    setTimeSignature(parsed.timeSignature);
     setChordSheet(parsed.chordSheet);
     setParseSuccess(true);
     setActiveTab("manual");
@@ -195,12 +201,14 @@ export default function SongForm({
       return;
     }
     try {
+      // Embed time signature as metadata in the chord sheet before saving
+      const finalChordSheet = setSheetTimeSignature(chordSheet, timeSignature);
       const s: Song = {
         id: song?.id ?? crypto.randomUUID(),
         title: title.trim(),
         key,
         bpm: BigInt(bpm),
-        chordSheet,
+        chordSheet: finalChordSheet,
         createdBy: song?.createdBy ?? getPrincipal(),
       };
       await createOrUpdate.mutateAsync(s);
@@ -244,7 +252,6 @@ export default function SongForm({
             </TabsTrigger>
           </TabsList>
 
-          {/* ── MANUAL TAB ── */}
           <TabsContent value="manual">
             {parseSuccess && (
               <div
@@ -255,7 +262,6 @@ export default function SongForm({
                 Parsed! Review the details below.
               </div>
             )}
-
             <div className="grid gap-4 py-2">
               <div className="grid gap-1.5">
                 <Label
@@ -273,8 +279,7 @@ export default function SongForm({
                   data-ocid="song.input"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="grid gap-1.5">
                   <Label className="text-muted-foreground text-xs uppercase tracking-wide">
                     Key
@@ -318,8 +323,35 @@ export default function SongForm({
                     data-ocid="song.bpm.input"
                   />
                 </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                    Time Sig
+                  </Label>
+                  <Select
+                    value={timeSignature}
+                    onValueChange={setTimeSignature}
+                  >
+                    <SelectTrigger
+                      className="bg-input border-border"
+                      data-ocid="song.timesig.select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      style={{
+                        background: "oklch(var(--popover))",
+                        borderColor: "oklch(var(--border))",
+                      }}
+                    >
+                      {TIME_SIGNATURES.map((ts) => (
+                        <SelectItem key={ts} value={ts}>
+                          {ts}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-
               <div className="grid gap-1.5">
                 <Label
                   htmlFor="chord-sheet"
@@ -345,7 +377,6 @@ export default function SongForm({
             </div>
           </TabsContent>
 
-          {/* ── IMPORT TAB ── */}
           <TabsContent value="import">
             <div className="grid gap-4 py-2">
               <div className="grid gap-1.5">
@@ -355,8 +386,7 @@ export default function SongForm({
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Copy the full song page from Ultimate Guitar, Worship
                   Together, PraiseCharts, Hymnary, or any chord sheet site and
-                  paste it below. We'll extract the title, key, BPM, and chords
-                  automatically.
+                  paste it below.
                 </p>
                 <Textarea
                   value={importText}
@@ -364,12 +394,11 @@ export default function SongForm({
                   rows={16}
                   className="bg-input border-border font-mono text-sm resize-none"
                   placeholder={
-                    "Title: Amazing Grace\nKey: G\nBPM: 76\n\n[Verse 1]\nG      C    G\nAmazing grace how sweet the sound..."
+                    "Title: Amazing Grace\nKey: G\nBPM: 76\nTime Signature: 3/4\n\n[Verse 1]\nG      C    G\nAmazing grace..."
                   }
                   data-ocid="song.import.textarea"
                 />
               </div>
-
               <Button
                 type="button"
                 onClick={handleParse}
@@ -379,7 +408,6 @@ export default function SongForm({
                 <Download className="w-4 h-4 mr-2" />
                 Parse &amp; Fill Form
               </Button>
-
               <p className="text-xs text-muted-foreground/60 text-center">
                 After parsing, you'll be taken to the Manual tab to review and
                 save.

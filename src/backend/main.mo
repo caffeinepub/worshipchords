@@ -69,7 +69,6 @@ actor {
   let setlists = Map.empty<SetlistId, Setlist>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
-  // Worship leader state: use Map<Principal, ()> as a set
   let worshipLeaders = Map.empty<Principal, ()>();
   let worshipLeaderRequests = Map.empty<Principal, WorshipLeaderRequest>();
   let worshipLeaderSessions = Map.empty<Principal, ActiveSession>();
@@ -106,7 +105,6 @@ actor {
 
   var activeSession : ActiveSession = defaultSession;
 
-  // User Profile
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized");
@@ -128,7 +126,6 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Songs CRUD
   public shared ({ caller }) func createOrUpdateSong(inputSong : Song) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized");
@@ -179,7 +176,6 @@ actor {
     ).sort();
   };
 
-  // Setlists
   public shared ({ caller }) func createOrUpdateSetlist(setlist : Setlist) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized");
@@ -205,7 +201,6 @@ actor {
     setlists.values().toArray().sort();
   };
 
-  // Admin global session
   public query ({ caller }) func getActiveSession() : async ActiveSession {
     activeSession;
   };
@@ -217,7 +212,6 @@ actor {
     activeSession := { newSession with lastUpdated = Time.now() };
   };
 
-  // Worship Leader Management
   public shared ({ caller }) func requestWorshipLeader() : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Must be signed in");
@@ -327,7 +321,6 @@ actor {
     };
   };
 
-  // Messages
   public shared ({ caller }) func postMessage(authorName : Text, text : Text) : async () {
     messagesList.add({
       id = nextMessageId;

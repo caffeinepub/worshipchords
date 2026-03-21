@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ListMusic, Music2 } from "lucide-react";
 import type { ActiveSession } from "../backend.d";
 import { useListSetlists, useListSongs } from "../hooks/useQueries";
+import { extractTimeSignature } from "../utils/chords";
 
 interface SetlistViewProps {
   session: ActiveSession | null | undefined;
@@ -68,7 +69,6 @@ export default function SetlistView({
       className={cn("flex flex-col h-full bg-background", mobile ? "" : "")}
       data-ocid="setlist_view.panel"
     >
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
         <ListMusic className="w-4 h-4 text-chord" />
         <div className="flex-1 min-w-0">
@@ -81,8 +81,6 @@ export default function SetlistView({
             </p>
           )}
         </div>
-
-        {/* Prev / Next navigation */}
         {setlistSongs.length > 0 && (
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -124,7 +122,6 @@ export default function SetlistView({
         )}
       </div>
 
-      {/* Content */}
       <ScrollArea className="flex-1">
         {!activeSetlist ? (
           <div
@@ -161,6 +158,7 @@ export default function SetlistView({
             {setlistSongs.map((song, index) => {
               if (!song) return null;
               const isActive = session?.activeSongId === song.id;
+              const ts = extractTimeSignature(song.chordSheet);
               return (
                 <button
                   type="button"
@@ -175,7 +173,6 @@ export default function SetlistView({
                       : "border-l-2 border-transparent",
                   )}
                 >
-                  {/* Song number */}
                   <span
                     className={cn(
                       "w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0",
@@ -186,8 +183,6 @@ export default function SetlistView({
                   >
                     {index + 1}
                   </span>
-
-                  {/* Song info */}
                   <div className="flex-1 min-w-0">
                     <p
                       className={cn(
@@ -197,12 +192,10 @@ export default function SetlistView({
                     >
                       {song.title}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {Number(song.bpm)} BPM
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      {ts} · {Number(song.bpm)} BPM
                     </p>
                   </div>
-
-                  {/* Key badge */}
                   <Badge
                     variant="outline"
                     className={cn(

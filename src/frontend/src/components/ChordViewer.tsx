@@ -9,6 +9,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
+  ChevronLeft,
+  ChevronRight,
   Guitar,
   Maximize2,
   Mic,
@@ -29,7 +31,12 @@ import {
   type Instrument,
 } from "../hooks/useInstrument";
 import { useGetSong } from "../hooks/useQueries";
-import { NOTES, getDisplaySheet, getLineType } from "../utils/chords";
+import {
+  NOTES,
+  extractTimeSignature,
+  getDisplaySheet,
+  getLineType,
+} from "../utils/chords";
 
 const SKELETON_WIDTHS = [
   "65%",
@@ -50,7 +57,6 @@ const INSTRUMENT_ICONS: Record<Instrument, React.ReactNode> = {
   other: <Music2 className="w-3.5 h-3.5" />,
 };
 
-// Scroll speeds: pixels per second
 const SCROLL_SPEEDS = [
   { label: "Slow", value: 20 },
   { label: "Medium", value: 45 },
@@ -65,14 +71,13 @@ interface ChordViewerProps {
   instrument: Instrument;
   onInstrumentChange: (i: Instrument) => void;
   mobile?: boolean;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  onPrevSong?: () => void;
+  onNextSong?: () => void;
 }
 
-/**
- * Render a chord line by wrapping each chord token in a highlighted span.
- * Spaces are preserved as-is so alignment above lyrics is maintained.
- */
 function renderChordLine(line: string): React.ReactNode {
-  // Split into chord tokens and whitespace runs, use part+position as key
   const parts = line.split(/(\s+)/);
   return parts.map((part, idx) => {
     if (!part) return null;
@@ -100,10 +105,14 @@ export default function ChordViewer({
   onSessionUpdate,
   instrument,
   onInstrumentChange,
+  hasPrev = false,
+  hasNext = false,
+  onPrevSong,
+  onNextSong,
 }: ChordViewerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [scrollSpeedIdx, setScrollSpeedIdx] = useState(1); // default: Medium
+  const [scrollSpeedIdx, setScrollSpeedIdx] = useState(1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
@@ -115,27 +124,20 @@ export default function ChordViewer({
 
   const { data: song, isLoading } = useGetSong(activeSongId);
 
-  // Auto-scroll loop
   const scrollLoop = useCallback(
     (timestamp: number) => {
-      if (lastTimeRef.current === null) {
-        lastTimeRef.current = timestamp;
-      }
+      if (lastTimeRef.current === null) lastTimeRef.current = timestamp;
       const delta = timestamp - lastTimeRef.current;
       lastTimeRef.current = timestamp;
-
       const el = scrollRef.current;
       if (el) {
         const pxPerMs = SCROLL_SPEEDS[scrollSpeedIdx].value / 1000;
         el.scrollTop += pxPerMs * delta;
-
-        // Stop at the bottom
         if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
           setIsScrolling(false);
           return;
         }
       }
-
       rafRef.current = requestAnimationFrame(scrollLoop);
     },
     [scrollSpeedIdx],
@@ -159,7 +161,6 @@ export default function ChordViewer({
     };
   }, [isScrolling, scrollLoop]);
 
-  // Stop scrolling when song changes (using ref to avoid dep warning)
   const prevSongIdRef = useRef<string | undefined>(undefined);
   if (prevSongIdRef.current !== activeSongId) {
     prevSongIdRef.current = activeSongId;
@@ -199,7 +200,6 @@ export default function ChordViewer({
     onSessionUpdate({ transposeSteps: BigInt(0), capoFret: BigInt(0) });
   };
 
-  // Compute instrument-aware display
   const { displaySheet, concertKey, displayKey, showCapo } = song
     ? getDisplaySheet(
         song.chordSheet,
@@ -211,7 +211,8 @@ export default function ChordViewer({
       )
     : { displaySheet: "", concertKey: "G", displayKey: "G", showCapo: false };
 
-  // "You see" label for this instrument
+  const timeSignature = song ? extractTimeSignature(song.chordSheet) : "4/4";
+
   const youSeeLabel =
     instrument === "guitar" && capoFret > 0
       ? `${displayKey} shapes (Capo ${capoFret})`
@@ -222,8 +223,13 @@ export default function ChordViewer({
     return displaySheet.split("\n").map((line, i) => {
       const type = getLineType(line);
       const key = `${type}-${i}`;
-      if (type === "empty")
-        return <div key={key} className="chord-sheet-gap" />;
+      if (type === "empty" || type === "meta")
+        return (
+          <div
+            key={key}
+            className={type === "empty" ? "chord-sheet-gap" : undefined}
+          />
+        );
       if (type === "section")
         return (
           <div key={key} className="section-label">
@@ -260,35 +266,69 @@ export default function ChordViewer({
           </div>
         ) : song ? (
           <div className="space-y-2.5">
-            {/* Title row */}
-            <div>
-              <h1 className="text-2xl font-bold text-foreground leading-tight">
-                {song.title}
-              </h1>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                {/* Concert key */}
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-chord/10 border border-chord/20 text-chord font-semibold">
-                  Key of {concertKey}
-                </span>
-                {/* Capo badge */}
-                {capoFret > 0 && (
-                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
-                    Capo {capoFret}
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-foreground leading-tight">
+                  {song.title}
+                </h1>
+                <div className="flex items-center gap-2 flex-wrap mt-1">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-chord/10 border border-chord/20 text-chord font-semibold">
+                    Key of {concertKey}
                   </span>
-                )}
-                {/* BPM */}
-                <span className="text-xs text-muted-foreground">
-                  {Number(song.bpm)} BPM
-                </span>
-                {chordMode === "roman" && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
-                    Roman
+                  {capoFret > 0 && (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
+                      Capo {capoFret}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {timeSignature} · {Number(song.bpm)} BPM
                   </span>
-                )}
+                  {chordMode === "roman" && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
+                      Roman
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Prev / Next navigation */}
+              {(hasPrev || hasNext) && (
+                <div className="flex items-center gap-1 shrink-0 mt-1">
+                  <button
+                    type="button"
+                    onClick={onPrevSong}
+                    disabled={!hasPrev}
+                    title="Previous song"
+                    data-ocid="viewer.prev_song"
+                    className={cn(
+                      "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                      hasPrev
+                        ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
+                        : "border-border text-muted-foreground/30 cursor-not-allowed",
+                    )}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onNextSong}
+                    disabled={!hasNext}
+                    title="Next song"
+                    data-ocid="viewer.next_song"
+                    className={cn(
+                      "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                      hasNext
+                        ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
+                        : "border-border text-muted-foreground/30 cursor-not-allowed",
+                    )}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* You-see badge + Instrument selector row */}
+            {/* Instrument selector */}
             <div className="flex items-center gap-3 flex-wrap">
               <div
                 className={cn(
@@ -301,7 +341,6 @@ export default function ChordViewer({
                 {INSTRUMENT_ICONS[instrument]}
                 <span>You see: {youSeeLabel}</span>
               </div>
-
               <div className="flex items-center gap-1 flex-wrap">
                 {INSTRUMENTS.map((ins) => (
                   <button
@@ -501,7 +540,7 @@ export default function ChordViewer({
         </div>
       )}
 
-      {/* Scroll Controls Bar — visible when a song is loaded */}
+      {/* Scroll Controls */}
       {song && (
         <div className="px-4 py-2 border-b border-border bg-background/60 flex items-center gap-2 shrink-0">
           <button
@@ -522,7 +561,6 @@ export default function ChordViewer({
             )}
             {isScrolling ? "Pause Scroll" : "Auto Scroll"}
           </button>
-
           <div className="flex items-center gap-1">
             {SCROLL_SPEEDS.map((s, idx) => (
               <button
@@ -541,8 +579,6 @@ export default function ChordViewer({
               </button>
             ))}
           </div>
-
-          {/* Scroll back to top button */}
           {!isScrolling && (
             <button
               type="button"
@@ -558,7 +594,7 @@ export default function ChordViewer({
         </div>
       )}
 
-      {/* Chord Sheet — native scrollable div so we can control scrollTop */}
+      {/* Chord Sheet */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto">
         {isLoading ? (
           <div className="p-6 space-y-3" data-ocid="viewer.loading_state">
@@ -573,7 +609,6 @@ export default function ChordViewer({
         ) : song ? (
           <div className="px-6 py-5">
             <div className="min-w-0">{renderSheet()}</div>
-            {/* Spacer so the last lines are reachable at the bottom */}
             <div className="h-24" />
           </div>
         ) : null}

@@ -1,9 +1,11 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Mic2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Mic2 } from "lucide-react";
 import type { ReactElement } from "react";
 import type { ActiveSession } from "../backend.d";
 import { useGetSong } from "../hooks/useQueries";
+import { extractTimeSignature } from "../utils/chords";
 import { stripChordsToLyrics } from "../utils/lyrics";
 
 const LOADING_SKELETONS = [
@@ -20,29 +22,36 @@ const LOADING_SKELETONS = [
 interface LyricsViewerProps {
   session: ActiveSession | null | undefined;
   mobile?: boolean;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  onPrevSong?: () => void;
+  onNextSong?: () => void;
 }
 
-export default function LyricsViewer({ session }: LyricsViewerProps) {
+export default function LyricsViewer({
+  session,
+  hasPrev = false,
+  hasNext = false,
+  onPrevSong,
+  onNextSong,
+}: LyricsViewerProps) {
   const activeSongId = session?.activeSongId;
   const { data: song, isLoading } = useGetSong(activeSongId);
-
   const lyricsText = song ? stripChordsToLyrics(song.chordSheet) : "";
+  const timeSignature = song ? extractTimeSignature(song.chordSheet) : "4/4";
 
   const renderLyrics = () => {
     if (!lyricsText) return null;
     const lines = lyricsText.split("\n");
     const elements: ReactElement[] = [];
     let key = 0;
-
     for (const line of lines) {
       const trimmed = line.trim();
       const lineKey = `lyrics-line-${key++}`;
-
       if (!trimmed) {
         elements.push(<div key={lineKey} className="h-4" />);
         continue;
       }
-
       if (/^\[.+\]$/.test(trimmed)) {
         elements.push(
           <div
@@ -58,7 +67,6 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
         );
         continue;
       }
-
       elements.push(
         <p
           key={lineKey}
@@ -68,13 +76,11 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
         </p>,
       );
     }
-
     return elements;
   };
 
   return (
     <div className="flex flex-col h-full" data-ocid="lyrics.panel">
-      {/* Header */}
       <div className="px-6 pt-5 pb-4 border-b border-border shrink-0 bg-background">
         {isLoading ? (
           <div className="space-y-2">
@@ -82,21 +88,57 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
             <Skeleton className="h-4 w-32 bg-secondary" />
           </div>
         ) : song ? (
-          <div>
-            <h1 className="text-2xl font-bold text-foreground leading-tight tracking-tight">
-              {song.title}
-            </h1>
-            <div className="flex items-center gap-3 mt-2.5">
-              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-chord/10 border border-chord/20 text-chord font-semibold">
-                Key of {song.key}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {Number(song.bpm)} BPM
-              </span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Mic2 className="w-3 h-3" /> Vocals
-              </span>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold text-foreground leading-tight tracking-tight">
+                {song.title}
+              </h1>
+              <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-chord/10 border border-chord/20 text-chord font-semibold">
+                  Key of {song.key}
+                </span>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {timeSignature} · {Number(song.bpm)} BPM
+                </span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Mic2 className="w-3 h-3" /> Vocals
+                </span>
+              </div>
             </div>
+            {(hasPrev || hasNext) && (
+              <div className="flex items-center gap-1 shrink-0 mt-1">
+                <button
+                  type="button"
+                  onClick={onPrevSong}
+                  disabled={!hasPrev}
+                  title="Previous song"
+                  data-ocid="lyrics.prev_song"
+                  className={cn(
+                    "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                    hasPrev
+                      ? "border-chord/30 text-chord hover:bg-chord/10"
+                      : "border-border text-muted-foreground/30 cursor-not-allowed",
+                  )}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onNextSong}
+                  disabled={!hasNext}
+                  title="Next song"
+                  data-ocid="lyrics.next_song"
+                  className={cn(
+                    "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                    hasNext
+                      ? "border-chord/30 text-chord hover:bg-chord/10"
+                      : "border-border text-muted-foreground/30 cursor-not-allowed",
+                  )}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div>
@@ -110,7 +152,6 @@ export default function LyricsViewer({ session }: LyricsViewerProps) {
         )}
       </div>
 
-      {/* Lyrics Content */}
       <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="p-10 space-y-5" data-ocid="lyrics.loading_state">

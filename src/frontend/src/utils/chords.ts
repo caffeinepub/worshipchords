@@ -39,8 +39,16 @@ export function transposeNote(note: string, semitones: number): string {
 const CHORD_RE =
   /^([A-G][#b]?)(m(?:aj)?|min|dim|aug|sus[24]?|add)?([0-9]+)?((?:\/[A-G][#b]?)?)$/;
 
+// Matches Roman numeral chords: I, ii, IV, V7, viidim, IV/V, etc.
+const ROMAN_CHORD_RE =
+  /^(VII|VII|VI|IV|III|II|VII|vii|vi|iv|iii|ii|I|V|i|v)(°|\+|maj|sus[24]?|add|m|min|dim|aug)?[0-9]*((?:\/[A-G][#b]?)?)$/;
+
 export function isChordToken(token: string): boolean {
   return CHORD_RE.test(token);
+}
+
+export function isRomanChordToken(token: string): boolean {
+  return ROMAN_CHORD_RE.test(token);
 }
 
 export function transposeChord(chord: string, semitones: number): string {
@@ -61,7 +69,10 @@ export function isChordLine(line: string): boolean {
     .filter((t) => t.length > 0);
   if (tokens.length === 0) return false;
   const chordCount = tokens.filter((t) => isChordToken(t)).length;
-  return chordCount / tokens.length > 0.5;
+  if (chordCount / tokens.length > 0.5) return true;
+  // Also detect Roman numeral chord lines
+  const romanCount = tokens.filter((t) => isRomanChordToken(t)).length;
+  return romanCount / tokens.length > 0.5;
 }
 
 export function transposeLine(line: string, semitones: number): string {
@@ -141,10 +152,36 @@ export function getCapoShapesKey(concertKey: string, capoFret: number): string {
   return transposeNote(concertKey, -capoFret);
 }
 
+// ── Time Signature metadata embedded in chordSheet ──────────────────────────
+// Format: first line "// ts:4/4" (stripped before display)
+
+const TS_RE = /^\/\/ ts:([^\n]+)/m;
+
+/** Extract the time signature from a chord sheet, defaulting to "4/4". */
+export function extractTimeSignature(sheet: string): string {
+  const m = sheet.match(TS_RE);
+  return m ? m[1].trim() : "4/4";
+}
+
+/** Strip the time-signature metadata line from a chord sheet. */
+export function stripSheetMetadata(sheet: string): string {
+  return sheet.replace(/^\/\/ ts:[^\n]*\n?/m, "");
+}
+
+/** Prepend (or replace) the time-signature metadata line in a chord sheet. */
+export function setSheetTimeSignature(sheet: string, ts: string): string {
+  const stripped = stripSheetMetadata(sheet);
+  return `// ts:${ts}\n${stripped}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function getLineType(
   line: string,
-): "chord" | "lyric" | "section" | "empty" {
+): "chord" | "lyric" | "section" | "empty" | "meta" {
   if (!line.trim()) return "empty";
+  // Time-signature or other metadata comments
+  if (/^\/\//.test(line.trim())) return "meta";
   if (/^\[.+\]$/.test(line.trim())) return "section";
   if (isChordLine(line)) return "chord";
   return "lyric";
@@ -165,18 +202,10 @@ export const KEYS = [
   "B",
 ];
 
-/**
- * Returns the sheet with only transpose applied (concert pitch).
- * For Bass, Keys, Vocals, Other — no capo offset.
- */
 export function getConcertSheet(sheet: string, transposeSteps: number): string {
   return transposeSheet(sheet, transposeSteps);
 }
 
-/**
- * Returns the sheet transposed for guitar with capo offset applied.
- * Chords shown are the shapes to fret (transpose then subtract capo).
- */
 export function getGuitarSheet(
   sheet: string,
   transposeSteps: number,
@@ -186,9 +215,6 @@ export function getGuitarSheet(
   return transposeSheet(transposed, -capoFret);
 }
 
-/**
- * Returns instrument-appropriate sheet and display metadata.
- */
 export function getDisplaySheet(
   sheet: string,
   songKey: string,
@@ -202,6 +228,9 @@ export function getDisplaySheet(
   displayKey: string;
   showCapo: boolean;
 } {
+  // Strip metadata lines before processing
+  const cleanSheet = stripSheetMetadata(sheet);
+
   const concertKey = transposeNote(songKey, transposeSteps);
   const useCapoOffset = instrument === "guitar" && capoFret > 0;
   const displayKey = useCapoOffset
@@ -209,8 +238,8 @@ export function getDisplaySheet(
     : concertKey;
 
   let displaySheet = useCapoOffset
-    ? getGuitarSheet(sheet, transposeSteps, capoFret)
-    : getConcertSheet(sheet, transposeSteps);
+    ? getGuitarSheet(cleanSheet, transposeSteps, capoFret)
+    : getConcertSheet(cleanSheet, transposeSteps);
 
   if (chordMode === "roman") {
     displaySheet = sheetToRoman(displaySheet, displayKey);

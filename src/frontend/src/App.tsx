@@ -45,6 +45,7 @@ import {
   useActiveSession,
   useIsAdmin,
   useIsWorshipLeader,
+  useListSetlists,
   useListSongs,
   useListWorshipLeaders,
   useSaveUserProfile,
@@ -54,6 +55,7 @@ import {
   useWorshipLeaderSession,
 } from "./hooks/useQueries";
 import { useRedirectLogin } from "./hooks/useRedirectLogin";
+import { setSheetTimeSignature } from "./utils/chords";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +95,7 @@ const SEED_SONGS = [
     title: "Amazing Grace",
     key: "G",
     bpm: 72,
+    timeSignature: "3/4",
     chordSheet: `[Verse 1]
 G        C    G
 Amazing grace how sweet the sound
@@ -117,6 +120,7 @@ The hour I first believed`,
     title: "How Great Is Our God",
     key: "G",
     bpm: 68,
+    timeSignature: "4/4",
     chordSheet: `[Verse 1]
 G              Em
 The splendor of the King clothed in majesty
@@ -139,6 +143,7 @@ How great how great is our God`,
     title: "10,000 Reasons (Bless the Lord)",
     key: "G",
     bpm: 73,
+    timeSignature: "4/4",
     chordSheet: `[Chorus]
 G      D      Em    C
 Bless the Lord O my soul O my soul
@@ -163,6 +168,7 @@ Let me be singing when the evening comes`,
     title: "Oceans (Where Feet May Fail)",
     key: "D",
     bpm: 67,
+    timeSignature: "4/4",
     chordSheet: `[Verse 1]
 D                 A
 You call me out upon the waters
@@ -187,6 +193,7 @@ For I am Yours and You are mine`,
     title: "What A Beautiful Name",
     key: "D",
     bpm: 70,
+    timeSignature: "4/4",
     chordSheet: `[Verse 1]
 D      G      D
 You were the Word at the beginning
@@ -226,6 +233,7 @@ function AppContent() {
   const { data: isWorshipLeader = false } = useIsWorshipLeader();
   const { data: session } = useActiveSession();
   const { data: songs = [] } = useListSongs();
+  const { data: setlists = [] } = useListSetlists();
   const { data: userProfile } = useUserProfile();
   const { data: worshipLeaders = [] } = useListWorshipLeaders();
   const { data: followedLeaderSession } =
@@ -236,14 +244,10 @@ function AppContent() {
   const saveProfile = useSaveUserProfile();
   const { instrument, setInstrument } = useInstrument();
 
-  // isLoggedIn: true when identity is available (covers both fresh login AND
-  // page reload where identity is restored from storage with status="idle")
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const isLoggingIn =
     loginStatus === "logging-in" || loginStatus === "initializing";
 
-  // Determine which session to display for the viewer
-  // Musicians can follow a specific leader; otherwise fall back to admin session
   const viewerSession =
     !isAdmin && !isWorshipLeader && followingLeader && followedLeaderSession
       ? followedLeaderSession
@@ -266,7 +270,7 @@ function AppContent() {
             title: s.title,
             key: s.key,
             bpm: BigInt(s.bpm),
-            chordSheet: s.chordSheet,
+            chordSheet: setSheetTimeSignature(s.chordSheet, s.timeSignature),
             createdBy: principal as any,
           }),
         ),
@@ -301,7 +305,6 @@ function AppContent() {
           ...updates,
         });
       } else if (isWorshipLeader) {
-        // Worship leaders update their own session
         updateLeaderSession.mutate({
           ...session,
           lastUpdated: now,
@@ -318,6 +321,34 @@ function AppContent() {
 
   const navigateToView = useCallback(() => setActiveTab("view"), []);
 
+  // Setlist navigation for the viewer
+  const activeSetlist = viewerSession?.activeSetlistId
+    ? setlists.find((s) => s.id === viewerSession.activeSetlistId)
+    : null;
+  const setlistSongs = activeSetlist
+    ? activeSetlist.songIds
+        .map((id) => songs.find((s) => s.id === id))
+        .filter(Boolean)
+    : [];
+  const currentSongIdx = viewerSession?.activeSongId
+    ? setlistSongs.findIndex((s) => s?.id === viewerSession.activeSongId)
+    : -1;
+  const hasPrevSong = currentSongIdx > 0;
+  const hasNextSong =
+    currentSongIdx >= 0 && currentSongIdx < setlistSongs.length - 1;
+
+  const handlePrevSong = useCallback(() => {
+    if (!hasPrevSong) return;
+    const prev = setlistSongs[currentSongIdx - 1];
+    if (prev) handleSessionUpdate({ activeSongId: prev.id });
+  }, [hasPrevSong, setlistSongs, currentSongIdx, handleSessionUpdate]);
+
+  const handleNextSong = useCallback(() => {
+    if (!hasNextSong) return;
+    const next = setlistSongs[currentSongIdx + 1];
+    if (next) handleSessionUpdate({ activeSongId: next.id });
+  }, [hasNextSong, setlistSongs, currentSongIdx, handleSessionUpdate]);
+
   const tabs = [
     { id: "library" as Tab, icon: Music2, label: "Library" },
     { id: "setlist" as Tab, icon: ListMusic, label: "Sets" },
@@ -325,7 +356,7 @@ function AppContent() {
     { id: "chat" as Tab, icon: MessageSquare, label: "Chat" },
   ];
 
-  // Determine whether to show lyrics view (vocalists always see lyrics)
+  // Only non-admin, non-leader vocalists see lyrics-only view
   const isVocalist = instrument === "vocals";
 
   return (
@@ -360,7 +391,6 @@ function AppContent() {
         </nav>
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Admin badge + panel */}
           {isAdmin && (
             <div className="flex items-center gap-1.5">
               <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded bg-chord/10 border border-chord/20">
@@ -373,7 +403,6 @@ function AppContent() {
             </div>
           )}
 
-          {/* Worship leader badge / claim panel */}
           {isLoggedIn && !isAdmin && (
             <WorshipLeaderClaimPanel
               isWorshipLeader={isWorshipLeader}
@@ -381,7 +410,6 @@ function AppContent() {
             />
           )}
 
-          {/* Worship leader badge in header when admin is also a leader */}
           {isAdmin && isWorshipLeader && (
             <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded bg-leader/10 border border-leader/20">
               <Crown className="w-3 h-3 text-leader" />
@@ -434,7 +462,7 @@ function AppContent() {
         </div>
       </header>
 
-      {/* Follow leader banner for musicians */}
+      {/* Follow leader banner */}
       {isLoggedIn &&
         !isAdmin &&
         !isWorshipLeader &&
@@ -499,7 +527,13 @@ function AppContent() {
                 onNavigateToView={navigateToView}
               />
             ) : isVocalist ? (
-              <LyricsViewer session={viewerSession} />
+              <LyricsViewer
+                session={viewerSession}
+                hasPrev={hasPrevSong}
+                hasNext={hasNextSong}
+                onPrevSong={handlePrevSong}
+                onNextSong={handleNextSong}
+              />
             ) : (
               <ChordViewer
                 session={viewerSession}
@@ -507,6 +541,10 @@ function AppContent() {
                 onSessionUpdate={handleSessionUpdate}
                 instrument={instrument}
                 onInstrumentChange={setInstrument}
+                hasPrev={hasPrevSong}
+                hasNext={hasNextSong}
+                onPrevSong={handlePrevSong}
+                onNextSong={handleNextSong}
               />
             )}
           </div>
@@ -540,7 +578,14 @@ function AppContent() {
           )}
           {activeTab === "view" &&
             (isVocalist ? (
-              <LyricsViewer session={viewerSession} mobile />
+              <LyricsViewer
+                session={viewerSession}
+                mobile
+                hasPrev={hasPrevSong}
+                hasNext={hasNextSong}
+                onPrevSong={handlePrevSong}
+                onNextSong={handleNextSong}
+              />
             ) : (
               <ChordViewer
                 session={viewerSession}
@@ -549,6 +594,10 @@ function AppContent() {
                 instrument={instrument}
                 onInstrumentChange={setInstrument}
                 mobile
+                hasPrev={hasPrevSong}
+                hasNext={hasNextSong}
+                onPrevSong={handlePrevSong}
+                onNextSong={handleNextSong}
               />
             ))}
           {activeTab === "chat" && (
