@@ -57,12 +57,13 @@ const INSTRUMENT_ICONS: Record<Instrument, React.ReactNode> = {
   other: <Music2 className="w-3.5 h-3.5" />,
 };
 
-const SCROLL_SPEEDS = [
-  { label: "Slow", value: 20 },
-  { label: "Medium", value: 45 },
-  { label: "Fast", value: 80 },
-  { label: "Very Fast", value: 130 },
-];
+const BASE_PX_PER_S = 40;
+const SPEED_MIN = 0.1;
+const SPEED_MAX = 1.5;
+const SPEED_STEP = 0.1;
+
+const canNativeFullscreen = () =>
+  typeof document !== "undefined" && !!document.fullscreenEnabled;
 
 interface ChordViewerProps {
   session: ActiveSession | null | undefined;
@@ -110,14 +111,18 @@ export default function ChordViewer({
   onPrevSong,
   onNextSong,
 }: ChordViewerProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [scrollSpeedIdx, setScrollSpeedIdx] = useState(1);
+  const [scrollSpeed, setScrollSpeed] = useState(0.6);
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const accumRef = useRef<number>(0);
-  const scrollSpeedIdxRef = useRef<number>(1);
+  const scrollSpeedRef = useRef(0.6);
+  scrollSpeedRef.current = scrollSpeed;
+
+  const isFullscreen = isNativeFullscreen || isSimulatedFullscreen;
 
   const activeSongId = session?.activeSongId;
   const transposeSteps = session ? Number(session.transposeSteps) : 0;
@@ -125,9 +130,6 @@ export default function ChordViewer({
   const chordMode = session?.chordMode ?? "letters";
 
   const { data: song, isLoading } = useGetSong(activeSongId);
-
-  // Keep speed ref in sync so loop always reads latest value without recreating
-  scrollSpeedIdxRef.current = scrollSpeedIdx;
 
   const scrollLoop = useCallback((timestamp: number) => {
     if (lastTimeRef.current === null) {
@@ -138,7 +140,7 @@ export default function ChordViewer({
     lastTimeRef.current = timestamp;
     const el = scrollRef.current;
     if (el) {
-      const pxPerMs = SCROLL_SPEEDS[scrollSpeedIdxRef.current].value / 1000;
+      const pxPerMs = (BASE_PX_PER_S * scrollSpeedRef.current) / 1000;
       accumRef.current += pxPerMs * delta;
       const intPx = Math.floor(accumRef.current);
       if (intPx > 0) {
@@ -181,18 +183,22 @@ export default function ChordViewer({
 
   useEffect(() => {
     const onFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsNativeFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
   const toggleFullscreen = () => {
-    const el = document.getElementById("chord-viewer-root");
-    if (!document.fullscreenElement && el) {
-      el.requestFullscreen().catch(() => {});
-    } else if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    if (canNativeFullscreen()) {
+      const el = document.getElementById("chord-viewer-root");
+      if (!document.fullscreenElement && el) {
+        el.requestFullscreen().catch(() => {});
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } else {
+      setIsSimulatedFullscreen((prev) => !prev);
     }
   };
 
@@ -215,6 +221,13 @@ export default function ChordViewer({
   const handleReset = () => {
     if (!session || !isAdmin) return;
     onSessionUpdate({ transposeSteps: BigInt(0), capoFret: BigInt(0) });
+  };
+
+  const adjustSpeed = (delta: number) => {
+    setScrollSpeed((prev) => {
+      const next = Math.round((prev + delta) * 10) / 10;
+      return Math.min(SPEED_MAX, Math.max(SPEED_MIN, next));
+    });
   };
 
   const { displaySheet, concertKey, displayKey, showCapo } = song
@@ -272,105 +285,253 @@ export default function ChordViewer({
   return (
     <div
       id="chord-viewer-root"
+      style={
+        isSimulatedFullscreen
+          ? { position: "fixed", inset: 0, zIndex: 9999, overflowY: "auto" }
+          : undefined
+      }
       className={cn("flex flex-col h-full", isFullscreen && "bg-background")}
     >
-      {/* Song Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-border shrink-0">
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-48 bg-secondary" />
-            <Skeleton className="h-4 w-64 bg-secondary" />
+      {isFullscreen ? (
+        /* ── Fullscreen minimal bar ── */
+        <div className="px-3 py-2 border-b border-border shrink-0 flex items-center gap-2">
+          {/* Minimize */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            data-ocid="controls.toggle"
+            className="w-9 h-9 rounded flex items-center justify-center bg-secondary hover:bg-chord/20 text-muted-foreground hover:text-chord transition-colors border border-border shrink-0"
+          >
+            <Minimize2 className="w-4 h-4" />
+          </button>
+
+          {/* Song title + time signature/BPM */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <span className="text-sm font-semibold text-foreground truncate leading-tight">
+              {song?.title ?? ""}
+            </span>
+            {song && (
+              <span className="text-xs text-muted-foreground font-mono mt-0.5 leading-none">
+                {timeSignature} · {Number(song.bpm)} BPM
+              </span>
+            )}
           </div>
-        ) : song ? (
-          <div className="space-y-2.5">
-            <div className="flex items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-foreground leading-tight">
-                  {song.title}
-                </h1>
-                <div className="flex items-center gap-2 flex-wrap mt-1">
-                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-chord/10 border border-chord/20 text-chord font-semibold">
-                    Key of {concertKey}
-                  </span>
-                  {capoFret > 0 && (
-                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
-                      Capo {capoFret}
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {timeSignature} · {Number(song.bpm)} BPM
-                  </span>
-                  {chordMode === "roman" && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
-                      Roman
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              {/* Prev / Next navigation */}
-              {(hasPrev || hasNext) && (
-                <div className="flex items-center gap-1 shrink-0 mt-1">
-                  <button
-                    type="button"
-                    onClick={onPrevSong}
-                    disabled={!hasPrev}
-                    title="Previous song"
-                    data-ocid="viewer.prev_song"
-                    className={cn(
-                      "w-8 h-8 rounded flex items-center justify-center transition-colors border",
-                      hasPrev
-                        ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
-                        : "border-border text-muted-foreground/30 cursor-not-allowed",
-                    )}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onNextSong}
-                    disabled={!hasNext}
-                    title="Next song"
-                    data-ocid="viewer.next_song"
-                    className={cn(
-                      "w-8 h-8 rounded flex items-center justify-center transition-colors border",
-                      hasNext
-                        ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
-                        : "border-border text-muted-foreground/30 cursor-not-allowed",
-                    )}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Instrument selector */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div
+          {/* Prev/Next */}
+          {(hasPrev || hasNext) && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={onPrevSong}
+                disabled={!hasPrev}
+                data-ocid="viewer.prev_song"
                 className={cn(
-                  "inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium",
-                  showCapo
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                    : "bg-success/10 border-success/30 text-success",
+                  "w-9 h-9 rounded flex items-center justify-center border transition-colors",
+                  hasPrev
+                    ? "border-chord/30 text-chord hover:bg-chord/10"
+                    : "border-border text-muted-foreground/30 cursor-not-allowed",
                 )}
               >
-                {INSTRUMENT_ICONS[instrument]}
-                <span>You see: {youSeeLabel}</span>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onNextSong}
+                disabled={!hasNext}
+                data-ocid="viewer.next_song"
+                className={cn(
+                  "w-9 h-9 rounded flex items-center justify-center border transition-colors",
+                  hasNext
+                    ? "border-chord/30 text-chord hover:bg-chord/10"
+                    : "border-border text-muted-foreground/30 cursor-not-allowed",
+                )}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Auto-scroll inline */}
+          {song &&
+            (isScrolling ? (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => adjustSpeed(-SPEED_STEP)}
+                  disabled={scrollSpeed <= SPEED_MIN}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center bg-secondary border border-border hover:bg-chord/20 text-foreground transition-colors",
+                    scrollSpeed <= SPEED_MIN && "opacity-40 cursor-not-allowed",
+                  )}
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-xs font-mono font-semibold text-foreground min-w-[40px] text-center">
+                  {scrollSpeed.toFixed(1)}x
+                </span>
+                <button
+                  type="button"
+                  onClick={() => adjustSpeed(SPEED_STEP)}
+                  disabled={scrollSpeed >= SPEED_MAX}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center bg-secondary border border-border hover:bg-chord/20 text-foreground transition-colors",
+                    scrollSpeed >= SPEED_MAX && "opacity-40 cursor-not-allowed",
+                  )}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsScrolling(false)}
+                  data-ocid="scroll.toggle"
+                  className="w-9 h-9 rounded-full flex items-center justify-center bg-foreground text-background hover:opacity-90"
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <div className="flex items-center gap-1 flex-wrap">
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsScrolling(true)}
+                data-ocid="scroll.toggle"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium border bg-secondary text-muted-foreground border-border hover:text-foreground hover:border-chord/40 shrink-0"
+              >
+                <Play className="w-3 h-3" />
+                Scroll
+              </button>
+            ))}
+        </div>
+      ) : (
+        /* ── Normal song header ── */
+        <div className="px-5 pt-4 pb-3 border-b border-border shrink-0">
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48 bg-secondary" />
+              <Skeleton className="h-4 w-64 bg-secondary" />
+            </div>
+          ) : song ? (
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl font-bold text-foreground leading-tight">
+                    {song.title}
+                  </h1>
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-chord/10 border border-chord/20 text-chord font-semibold">
+                      Key of {concertKey}
+                    </span>
+                    {capoFret > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
+                        Capo {capoFret}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {timeSignature} · {Number(song.bpm)} BPM
+                    </span>
+                    {chordMode === "roman" && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-secondary border border-border text-muted-foreground">
+                        Roman
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Prev / Next navigation */}
+                {(hasPrev || hasNext) && (
+                  <div className="flex items-center gap-1 shrink-0 mt-1">
+                    <button
+                      type="button"
+                      onClick={onPrevSong}
+                      disabled={!hasPrev}
+                      title="Previous song"
+                      data-ocid="viewer.prev_song"
+                      className={cn(
+                        "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                        hasPrev
+                          ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
+                          : "border-border text-muted-foreground/30 cursor-not-allowed",
+                      )}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onNextSong}
+                      disabled={!hasNext}
+                      title="Next song"
+                      data-ocid="viewer.next_song"
+                      className={cn(
+                        "w-8 h-8 rounded flex items-center justify-center transition-colors border",
+                        hasNext
+                          ? "border-chord/30 text-chord hover:bg-chord/10 active:bg-chord/20"
+                          : "border-border text-muted-foreground/30 cursor-not-allowed",
+                      )}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Instrument selector */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium",
+                    showCapo
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                      : "bg-success/10 border-success/30 text-success",
+                  )}
+                >
+                  {INSTRUMENT_ICONS[instrument]}
+                  <span>You see: {youSeeLabel}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {INSTRUMENTS.map((ins) => (
+                    <button
+                      type="button"
+                      key={ins}
+                      onClick={() => onInstrumentChange(ins)}
+                      data-ocid={`instrument.${ins}.toggle`}
+                      aria-pressed={instrument === ins}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all min-h-[28px] border",
+                        instrument === ins
+                          ? "bg-chord text-background border-chord shadow-sm"
+                          : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground hover:border-chord/40",
+                      )}
+                    >
+                      {INSTRUMENT_ICONS[ins]}
+                      <span>{INSTRUMENT_LABELS[ins]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center py-8 text-center"
+              data-ocid="viewer.empty_state"
+            >
+              <Music2 className="w-10 h-10 text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground text-sm">No song selected</p>
+              {isAdmin && (
+                <p className="text-muted-foreground/60 text-xs mt-1">
+                  Select a song from the Library
+                </p>
+              )}
+              <div className="flex items-center gap-1 flex-wrap justify-center mt-4">
                 {INSTRUMENTS.map((ins) => (
                   <button
                     type="button"
                     key={ins}
                     onClick={() => onInstrumentChange(ins)}
                     data-ocid={`instrument.${ins}.toggle`}
-                    aria-pressed={instrument === ins}
                     className={cn(
                       "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all min-h-[28px] border",
                       instrument === ins
-                        ? "bg-chord text-background border-chord shadow-sm"
-                        : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground hover:border-chord/40",
+                        ? "bg-chord text-background border-chord"
+                        : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground",
                     )}
                   >
                     {INSTRUMENT_ICONS[ins]}
@@ -379,44 +540,12 @@ export default function ChordViewer({
                 ))}
               </div>
             </div>
-          </div>
-        ) : (
-          <div
-            className="flex flex-col items-center justify-center py-8 text-center"
-            data-ocid="viewer.empty_state"
-          >
-            <Music2 className="w-10 h-10 text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground text-sm">No song selected</p>
-            {isAdmin && (
-              <p className="text-muted-foreground/60 text-xs mt-1">
-                Select a song from the Library
-              </p>
-            )}
-            <div className="flex items-center gap-1 flex-wrap justify-center mt-4">
-              {INSTRUMENTS.map((ins) => (
-                <button
-                  type="button"
-                  key={ins}
-                  onClick={() => onInstrumentChange(ins)}
-                  data-ocid={`instrument.${ins}.toggle`}
-                  className={cn(
-                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all min-h-[28px] border",
-                    instrument === ins
-                      ? "bg-chord text-background border-chord"
-                      : "bg-secondary/60 text-muted-foreground border-border hover:text-foreground",
-                  )}
-                >
-                  {INSTRUMENT_ICONS[ins]}
-                  <span>{INSTRUMENT_LABELS[ins]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* Admin Controls */}
-      {isAdmin && session && (
+      {/* Admin Controls — hidden in fullscreen */}
+      {!isFullscreen && isAdmin && session && (
         <div className="px-4 py-2.5 border-b border-border bg-card/50 flex flex-wrap items-center gap-3 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Transpose</span>
@@ -545,45 +674,64 @@ export default function ChordViewer({
         </div>
       )}
 
-      {/* Scroll Controls + Fullscreen (visible to all users) */}
-      {song && (
-        <div className="px-4 py-2 border-b border-border bg-background/60 flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsScrolling((v) => !v)}
-            data-ocid="scroll.toggle"
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors border",
-              isScrolling
-                ? "bg-chord text-background border-chord"
-                : "bg-secondary text-muted-foreground border-border hover:text-foreground hover:border-chord/40",
-            )}
-          >
-            {isScrolling ? (
-              <Pause className="w-3 h-3" />
-            ) : (
-              <Play className="w-3 h-3" />
-            )}
-            {isScrolling ? "Pause Scroll" : "Auto Scroll"}
-          </button>
-          <div className="flex items-center gap-1">
-            {SCROLL_SPEEDS.map((s, idx) => (
+      {/* Scroll Controls + Fullscreen — hidden in fullscreen (controls are in minimal bar) */}
+      {!isFullscreen && song && (
+        <div className="px-4 py-2 border-b border-border bg-background/60 flex items-center gap-3 shrink-0">
+          {isScrolling ? (
+            /* Scrolling: show - / speed / + / Pause */
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                key={s.label}
-                onClick={() => setScrollSpeedIdx(idx)}
-                data-ocid={`scroll.speed.${idx}`}
+                onClick={() => adjustSpeed(-SPEED_STEP)}
+                disabled={scrollSpeed <= SPEED_MIN}
+                data-ocid="scroll.speed.button"
                 className={cn(
-                  "px-2.5 py-1 rounded text-xs font-medium transition-colors border",
-                  scrollSpeedIdx === idx
-                    ? "bg-chord/20 border-chord/40 text-chord"
-                    : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60",
+                  "w-11 h-11 rounded-full flex items-center justify-center transition-colors",
+                  "bg-secondary border border-border hover:bg-chord/20 text-foreground",
+                  scrollSpeed <= SPEED_MIN && "opacity-40 cursor-not-allowed",
                 )}
               >
-                {s.label}
+                <Minus className="w-4 h-4" />
               </button>
-            ))}
-          </div>
+              <span className="text-base font-mono font-semibold text-foreground min-w-[52px] text-center">
+                {scrollSpeed.toFixed(1)}x
+              </span>
+              <button
+                type="button"
+                onClick={() => adjustSpeed(SPEED_STEP)}
+                disabled={scrollSpeed >= SPEED_MAX}
+                data-ocid="scroll.speed.button"
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center transition-colors",
+                  "bg-secondary border border-border hover:bg-chord/20 text-foreground",
+                  scrollSpeed >= SPEED_MAX && "opacity-40 cursor-not-allowed",
+                )}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <div className="w-3" />
+              <button
+                type="button"
+                onClick={() => setIsScrolling(false)}
+                data-ocid="scroll.toggle"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors bg-foreground text-background hover:opacity-90"
+              >
+                <Pause className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            /* Not scrolling: show Auto Scroll play button */
+            <button
+              type="button"
+              onClick={() => setIsScrolling(true)}
+              data-ocid="scroll.toggle"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors border bg-secondary text-muted-foreground border-border hover:text-foreground hover:border-chord/40"
+            >
+              <Play className="w-3 h-3" />
+              Auto Scroll
+            </button>
+          )}
+
           <div className="ml-auto flex items-center gap-1.5">
             {!isScrolling && (
               <button
@@ -597,19 +745,14 @@ export default function ChordViewer({
                 ↑ Top
               </button>
             )}
-            {/* Fullscreen — available to all users */}
             <button
               type="button"
               onClick={toggleFullscreen}
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title="Enter fullscreen"
               className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-chord/20 text-muted-foreground hover:text-chord transition-colors border border-border"
               data-ocid="controls.toggle"
             >
-              {isFullscreen ? (
-                <Minimize2 className="w-3.5 h-3.5" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5" />
-              )}
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
