@@ -3,11 +3,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import "./index.css";
-import { captureAdminToken } from "./utils/urlParams";
+import { getSecretParameter } from "./utils/urlParams";
 
-// Capture admin token immediately at page load, before any sign-in redirect
-// can strip the hash/query parameter from the URL.
-captureAdminToken("caffeineAdminToken");
+// Capture admin token at the very first moment, before any redirect can strip it from the URL.
+// This saves it to both sessionStorage and localStorage for persistence.
+getSecretParameter("caffeineAdminToken");
 
 BigInt.prototype.toJSON = function () {
   return this.toString();
