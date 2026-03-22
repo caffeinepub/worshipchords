@@ -62,6 +62,12 @@ const SPEED_MIN = 0.1;
 const SPEED_MAX = 1.5;
 const SPEED_STEP = 0.1;
 
+const DEFAULT_SONG_SETTINGS = {
+  transposeSteps: 0,
+  capoFret: 0,
+  chordMode: "letters",
+};
+
 const canNativeFullscreen = () =>
   typeof document !== "undefined" && !!document.fullscreenEnabled;
 
@@ -103,7 +109,7 @@ function renderChordLine(line: string): React.ReactNode {
 export default function ChordViewer({
   session,
   isAdmin,
-  onSessionUpdate,
+  onSessionUpdate: _onSessionUpdate,
   instrument,
   onInstrumentChange,
   hasPrev = false,
@@ -122,12 +128,39 @@ export default function ChordViewer({
   const scrollSpeedRef = useRef(0.6);
   scrollSpeedRef.current = scrollSpeed;
 
+  // Per-song local settings — each song keeps its own transpose/capo/chordMode
+  const [perSongSettings, setPerSongSettings] = useState<
+    Map<string, { transposeSteps: number; capoFret: number; chordMode: string }>
+  >(new Map());
+
   const isFullscreen = isNativeFullscreen || isSimulatedFullscreen;
 
   const activeSongId = session?.activeSongId;
-  const transposeSteps = session ? Number(session.transposeSteps) : 0;
-  const capoFret = session ? Number(session.capoFret) : 0;
-  const chordMode = session?.chordMode ?? "letters";
+
+  const songSettings = activeSongId
+    ? (perSongSettings.get(activeSongId) ?? DEFAULT_SONG_SETTINGS)
+    : DEFAULT_SONG_SETTINGS;
+  const transposeSteps = songSettings.transposeSteps;
+  const capoFret = songSettings.capoFret;
+  const chordMode = songSettings.chordMode;
+
+  const updateSongSettings = (
+    patch: Partial<{
+      transposeSteps: number;
+      capoFret: number;
+      chordMode: string;
+    }>,
+  ) => {
+    if (!activeSongId) return;
+    setPerSongSettings((prev) => {
+      const next = new Map(prev);
+      next.set(activeSongId, {
+        ...(next.get(activeSongId) ?? DEFAULT_SONG_SETTINGS),
+        ...patch,
+      });
+      return next;
+    });
+  };
 
   const { data: song, isLoading } = useGetSong(activeSongId);
 
@@ -203,24 +236,20 @@ export default function ChordViewer({
   };
 
   const handleTranspose = (delta: number) => {
-    if (!session || !isAdmin) return;
     const newSteps = (((transposeSteps + delta) % 12) + 12) % 12;
-    onSessionUpdate({ transposeSteps: BigInt(newSteps) });
+    updateSongSettings({ transposeSteps: newSteps });
   };
 
   const handleCapo = (val: string) => {
-    if (!session || !isAdmin) return;
-    onSessionUpdate({ capoFret: BigInt(Number(val)) });
+    updateSongSettings({ capoFret: Number(val) });
   };
 
   const handleChordMode = (mode: string) => {
-    if (!session || !isAdmin) return;
-    onSessionUpdate({ chordMode: mode });
+    updateSongSettings({ chordMode: mode });
   };
 
   const handleReset = () => {
-    if (!session || !isAdmin) return;
-    onSessionUpdate({ transposeSteps: BigInt(0), capoFret: BigInt(0) });
+    updateSongSettings({ transposeSteps: 0, capoFret: 0 });
   };
 
   const adjustSpeed = (delta: number) => {
@@ -544,8 +573,8 @@ export default function ChordViewer({
         </div>
       )}
 
-      {/* Admin Controls — hidden in fullscreen */}
-      {!isFullscreen && isAdmin && session && (
+      {/* Controls — visible to all users when a song is loaded, hidden in fullscreen */}
+      {!isFullscreen && song && (
         <div className="px-4 py-2.5 border-b border-border bg-card/50 flex flex-wrap items-center gap-3 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Transpose</span>
@@ -634,7 +663,7 @@ export default function ChordViewer({
                 const targetIdx = NOTES.indexOf(k);
                 if (baseIdx !== -1 && targetIdx !== -1) {
                   const steps = (targetIdx - baseIdx + 12) % 12;
-                  onSessionUpdate({ transposeSteps: BigInt(steps) });
+                  updateSongSettings({ transposeSteps: steps });
                 }
               }}
             >
