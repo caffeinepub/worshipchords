@@ -389,9 +389,10 @@ function AppContent() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
+      {/* Header: single row, no wrapping */}
       <header
         id="app-header"
-        className="appbar border-b border-border flex items-center flex-wrap gap-2 px-4 min-h-14 py-1.5 shrink-0"
+        className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 min-w-0"
       >
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded bg-chord/20 flex items-center justify-center">
@@ -402,7 +403,7 @@ function AppContent() {
           </span>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-0.5 min-w-0 justify-center">
+        <nav className="hidden lg:flex items-center gap-0.5 shrink-0">
           {tabs.map(({ id, label }) => (
             <button
               type="button"
@@ -410,7 +411,7 @@ function AppContent() {
               onClick={() => setActiveTab(id)}
               data-ocid={`nav.${id}.tab`}
               className={cn(
-                "px-4 py-1.5 text-xs rounded font-medium transition-colors",
+                "px-4 py-1.5 text-xs rounded font-medium transition-colors whitespace-nowrap",
                 activeTab === id
                   ? "text-chord bg-chord/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
@@ -421,9 +422,9 @@ function AppContent() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 ml-auto min-w-0">
+        <div className="flex items-center gap-1.5 ml-auto shrink-0 overflow-hidden">
           {isAdmin && (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-chord/10 border border-chord/20">
                 <Shield className="w-3 h-3 text-chord" />
                 <span className="text-[10px] font-semibold text-chord uppercase tracking-wide">
@@ -529,14 +530,17 @@ function AppContent() {
         )}
 
       <div className="flex-1 min-h-0 overflow-hidden">
+        {/* Desktop layout */}
         <div className="hidden lg:grid lg:grid-cols-[280px_1fr_288px] h-full">
           <div className="border-r border-border overflow-hidden flex flex-col h-full sidebar-panel">
+            {/* Song Library with built-in Add Song button in header */}
             <div className="flex-1 overflow-hidden min-h-0">
               <SongLibrary
                 isAdmin={canControl}
                 session={session}
                 onSessionUpdate={handleSessionUpdate}
                 getPrincipal={getPrincipal}
+                showHeaderAddBtn={true}
               />
             </div>
             <div className="border-t border-border shrink-0">
@@ -590,16 +594,20 @@ function AppContent() {
           </div>
         </div>
 
+        {/* Mobile layout */}
         <div className="lg:hidden h-full">
           {activeTab === "library" && (
-            <SongLibrary
-              isAdmin={canControl}
-              session={session}
-              onSessionUpdate={handleSessionUpdate}
-              mobile
-              getPrincipal={getPrincipal}
-              onNavigateToView={() => setActiveTab("view")}
-            />
+            <div className="flex flex-col h-full overflow-hidden">
+              <SongLibrary
+                isAdmin={canControl}
+                session={session}
+                onSessionUpdate={handleSessionUpdate}
+                mobile
+                getPrincipal={getPrincipal}
+                onNavigateToView={() => setActiveTab("view")}
+                showHeaderAddBtn={true}
+              />
+            </div>
           )}
           {activeTab === "setlist" && (
             <div className="flex flex-col h-full overflow-hidden">

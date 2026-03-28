@@ -19,6 +19,7 @@ interface SongLibraryProps {
   mobile?: boolean;
   getPrincipal?: () => any;
   onNavigateToView?: () => void;
+  showHeaderAddBtn?: boolean;
 }
 
 export default function SongLibrary({
@@ -28,6 +29,7 @@ export default function SongLibrary({
   mobile = false,
   getPrincipal = () => null,
   onNavigateToView,
+  showHeaderAddBtn = true,
 }: SongLibraryProps) {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -38,7 +40,6 @@ export default function SongLibrary({
   const activeSongId = session?.activeSongId;
 
   const handleSelectSong = (id: string) => {
-    // All logged-in users can select a song to view
     onSessionUpdate({ activeSongId: id });
     onNavigateToView?.();
   };
@@ -71,7 +72,7 @@ export default function SongLibrary({
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Song Library
           </span>
-          {isAdmin && (
+          {isAdmin && showHeaderAddBtn && (
             <Button
               type="button"
               size="sm"
