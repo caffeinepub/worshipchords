@@ -391,7 +391,7 @@ function AppContent() {
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       <header
         id="app-header"
-        className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 overflow-hidden"
+        className="appbar border-b border-border flex items-center flex-wrap gap-2 px-4 min-h-14 py-1.5 shrink-0"
       >
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded bg-chord/20 flex items-center justify-center">
@@ -402,7 +402,7 @@ function AppContent() {
           </span>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-0.5 flex-1 min-w-0 justify-center">
+        <nav className="hidden lg:flex items-center gap-0.5 min-w-0 justify-center">
           {tabs.map(({ id, label }) => (
             <button
               type="button"
@@ -421,9 +421,9 @@ function AppContent() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 ml-auto shrink-0">
+        <div className="flex items-center gap-2 ml-auto min-w-0">
           {isAdmin && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-chord/10 border border-chord/20">
                 <Shield className="w-3 h-3 text-chord" />
                 <span className="text-[10px] font-semibold text-chord uppercase tracking-wide">
@@ -442,7 +442,7 @@ function AppContent() {
           )}
 
           {isAdmin && isWorshipLeader && (
-            <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-leader/10 border border-leader/20">
+            <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded bg-leader/10 border border-leader/20 shrink-0">
               <Crown className="w-3 h-3 text-leader" />
               <span className="text-[10px] font-semibold text-leader uppercase tracking-wide">
                 Leader
@@ -456,13 +456,13 @@ function AppContent() {
               size="sm"
               onClick={clear}
               data-ocid="auth.close_button"
-              className="text-muted-foreground hover:text-foreground text-xs gap-1 h-8"
+              className="text-muted-foreground hover:text-foreground text-xs gap-1 h-8 shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign Out</span>
             </Button>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Button
                 size="sm"
                 onClick={() => login()}

@@ -38,7 +38,7 @@ export default function SongLibrary({
   const activeSongId = session?.activeSongId;
 
   const handleSelectSong = (id: string) => {
-    if (!isAdmin) return;
+    // All logged-in users can select a song to view
     onSessionUpdate({ activeSongId: id });
     onNavigateToView?.();
   };
@@ -154,9 +154,7 @@ export default function SongLibrary({
                 onClick={() => handleSelectSong(song.id)}
                 data-ocid={`library.item.${idx + 1}`}
                 className={cn(
-                  "w-full text-left grid grid-cols-[1fr_40px_48px] items-center px-3 py-2.5 border-b border-border/50 group transition-colors",
-                  isAdmin &&
-                    "cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
+                  "w-full text-left grid grid-cols-[1fr_40px_48px] items-center px-3 py-2.5 border-b border-border/50 group transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-chord",
                   activeSongId === song.id
                     ? "bg-chord/15 border-l-2 border-l-chord"
                     : "hover:bg-secondary/50",

@@ -1,28 +1,23 @@
 # WorshipChords
 
 ## Current State
-The app has a fixed `<header>` with `h-14 shrink-0 overflow-hidden` inside a `flex flex-col h-[100dvh]` root. The sidebar and main content area sit below the header in the flex column. Fullscreen mode uses `position: fixed; inset: 0; zIndex: 9999` (simulated) for iOS/Android. The scroll container inside fullscreen is a `div` with `overflow-y: auto`.
+Admin token capture is entirely missing from main.tsx. getSecretParameter only checks sessionStorage then URL hash -- Internet Identity redirect wipes both. No localStorage persistence. Header is h-14 overflow-hidden causing clipping at medium widths. Add Song button depends on isAdmin/canControl which is always false due to broken token recognition.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `ResizeObserver` on the header element to set `--header-height` CSS variable dynamically on `<html>` element
-- `height: 100dvh` and `width: 100dvw` on the simulated fullscreen overlay style (in addition to `inset: 0`) to guarantee correct sizing on Android Chrome
-- `will-change: transform` and `contain: layout style` on the fullscreen scroll container to isolate paint
-- `-webkit-overflow-scrolling: touch` on the fullscreen scroll container for smooth iOS/Android touch scrolling
-- Debounce or remove any window `resize` listener that runs while fullscreen is active
+- Token capture block at the very top of main.tsx (before ReactDOM.createRoot) reading from URL query string AND hash, saving to both sessionStorage and localStorage immediately
 
 ### Modify
-- In `App.tsx`: the `<header>` should have an `id="app-header"` or `ref` so the ResizeObserver can target it. The content below the header (sidebar + main) should use `flex-1 min-h-0 overflow-hidden` to fill remaining space correctly regardless of header height.
-- In `ChordViewer.tsx`: the simulated fullscreen root `style` should include `height: '100dvh'` (with `100vh` fallback), `width: '100vw'`, `overflowY: 'hidden'`. The inner scroll div (`scrollRef`) must have `overflowY: 'auto'`, `-webkit-overflow-scrolling: touch`, `will-change: 'transform'`.
-- In `LyricsViewer.tsx`: same fullscreen style fixes as ChordViewer.
-- Header content: ensure the header flex row doesn't cause height growth -- use `overflow-hidden` and `min-w-0` on flex children so badges/nav items shrink rather than wrap and push height.
+- urlParams.ts: getSecretParameter to check 4 sources in order: sessionStorage → localStorage → URL hash → URL query string
+- getSecretFromHash: also fall back to localStorage (not just sessionStorage)
+- Header in App.tsx: change h-14 overflow-hidden to min-h-14, remove overflow-hidden, make right-side items wrap gracefully at medium widths
 
 ### Remove
-- Any window `resize` event listener inside fullscreen components that triggers state updates or re-renders
+- Nothing removed
 
 ## Implementation Plan
-1. In `App.tsx`: add `useEffect` with `ResizeObserver` on the header element; write `--header-height` to `document.documentElement.style`. Add `id="app-header"` to `<header>`. Ensure the main flex layout below header uses `flex-1 min-h-0`.
-2. In `ChordViewer.tsx`: update simulated fullscreen inline style to `{ position: 'fixed', inset: 0, zIndex: 9999, height: '100dvh', width: '100vw', overflowY: 'hidden' }`. On the inner `scrollRef` div add style/className for `-webkit-overflow-scrolling: touch` and `will-change: transform`. Remove any resize listener inside the fullscreen component.
-3. In `LyricsViewer.tsx`: same changes as ChordViewer.
-4. Validate and build.
+1. In main.tsx, before the imports block at the top (using a script-level IIFE or top-level code), capture caffeineAdminToken from window.location.search and window.location.hash, save to both sessionStorage and localStorage
+2. In urlParams.ts, update getSecretParameter to check sessionStorage first, then localStorage, then URL hash, then URL query string
+3. In urlParams.ts, update getSecretFromHash to also persist to localStorage (not just sessionStorage)
+4. In App.tsx header, change h-14 overflow-hidden to min-h-14, remove overflow-hidden, ensure right-side flex items can compress at medium widths (use min-w-0 on inner containers, abbreviate labels at medium widths)
