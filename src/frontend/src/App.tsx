@@ -28,7 +28,7 @@ import {
   Radio,
   Shield,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActiveSession } from "./backend.d";
 import AdminPanel from "./components/AdminPanel";
 import BandChat from "./components/BandChat";
@@ -369,9 +369,30 @@ function AppContent() {
   // Vocalists always see lyrics-only view (regardless of role)
   const isVocalist = instrument === "vocals";
 
+  // Track actual header height for dynamic offset
+  const headerResizeObserverRef = useRef<ResizeObserver | null>(null);
+  useEffect(() => {
+    const header = document.getElementById("app-header");
+    if (!header) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        document.documentElement.style.setProperty(
+          "--header-height",
+          `${entry.contentRect.height}px`,
+        );
+      }
+    });
+    ro.observe(header);
+    headerResizeObserverRef.current = ro;
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
-      <header className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 overflow-hidden">
+      <header
+        id="app-header"
+        className="appbar border-b border-border flex items-center gap-2 px-4 h-14 shrink-0 overflow-hidden"
+      >
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded bg-chord/20 flex items-center justify-center">
             <Music2 className="w-4 h-4 text-chord" />
@@ -507,7 +528,7 @@ function AppContent() {
           </div>
         )}
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <div className="hidden lg:grid lg:grid-cols-[280px_1fr_288px] h-full">
           <div className="border-r border-border overflow-hidden flex flex-col h-full sidebar-panel">
             <div className="flex-1 overflow-hidden min-h-0">

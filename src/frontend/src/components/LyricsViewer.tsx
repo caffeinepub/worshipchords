@@ -220,7 +220,14 @@ export default function LyricsViewer({
       id="lyrics-viewer-root"
       style={
         isSimulatedFullscreen
-          ? { position: "fixed", inset: 0, zIndex: 9999 }
+          ? {
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              height: "100dvh",
+              width: "100vw",
+              overflowY: "hidden" as const,
+            }
           : undefined
       }
       className={cn("flex flex-col h-full", isFullscreen && "bg-background")}
@@ -519,7 +526,7 @@ export default function LyricsViewer({
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto"
-        style={{ WebkitOverflowScrolling: "touch" }}
+        style={{ WebkitOverflowScrolling: "touch", willChange: "transform" }}
       >
         {isLoading ? (
           <div className="p-10 space-y-5" data-ocid="lyrics.loading_state">

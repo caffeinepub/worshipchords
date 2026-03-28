@@ -316,7 +316,14 @@ export default function ChordViewer({
       id="chord-viewer-root"
       style={
         isSimulatedFullscreen
-          ? { position: "fixed", inset: 0, zIndex: 9999 }
+          ? {
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              height: "100dvh",
+              width: "100vw",
+              overflowY: "hidden" as const,
+            }
           : undefined
       }
       className={cn("flex flex-col h-full", isFullscreen && "bg-background")}
@@ -788,7 +795,11 @@ export default function ChordViewer({
       )}
 
       {/* Chord Sheet */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overflow-x-auto"
+        style={{ WebkitOverflowScrolling: "touch", willChange: "transform" }}
+      >
         {isLoading ? (
           <div className="p-6 space-y-3" data-ocid="viewer.loading_state">
             {SKELETON_WIDTHS.map((w) => (
